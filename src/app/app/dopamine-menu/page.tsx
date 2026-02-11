@@ -10,6 +10,7 @@ import { QuickPickCard } from '@/components/features/dopamine/QuickPickCard';
 import { EnergyFilterBar } from '@/components/features/dopamine/EnergyFilterBar';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { createClient } from '@/lib/supabase/client';
+import { SEED_DOPAMINE_ITEMS } from '@/lib/seed-data';
 import type { EnergyLevel, DopamineCategory as DopamineCategoryType } from '@/types/database';
 
 interface DopamineItem {
@@ -32,6 +33,31 @@ const CATEGORIES = [
 
 const DB_CATEGORY_MAP: Record<string, string> = { appetizer: 'quick', side: 'pair', entree: 'medium', dessert: 'rewards' };
 const UI_CATEGORY_MAP: Record<string, string> = { quick: 'appetizer', pair: 'side', medium: 'entree', rewards: 'dessert' };
+
+// Derive energy level from category + duration when not explicitly stored
+function deriveEnergyLevel(category: string, durationMinutes: number | null): EnergyLevel {
+  // Physical / high-engagement activities tend to be "side" (pair with tasks)
+  // Quick hits are low-energy, desserts are rewards (recharge)
+  const catMap: Record<string, EnergyLevel> = {
+    appetizer: 'low',
+    side: 'high',
+    entree: 'medium',
+    dessert: 'recharge',
+  };
+  const base = catMap[category];
+  if (base) return base;
+  // Fallback based on duration
+  if (durationMinutes && durationMinutes <= 5) return 'low';
+  if (durationMinutes && durationMinutes >= 30) return 'high';
+  return 'medium';
+}
+
+const ENERGY_OPTIONS: { value: EnergyLevel; label: string }[] = [
+  { value: 'high', label: 'Wired' },
+  { value: 'medium', label: 'Okay' },
+  { value: 'low', label: 'Low' },
+  { value: 'recharge', label: 'Recharge' },
+];
 
 function formatLastUsed(isoDate: string | null): string | undefined {
   if (!isoDate) return undefined;
@@ -61,6 +87,7 @@ export default function DopamineMenuPage() {
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [newDuration, setNewDuration] = useState('');
+  const [newEnergy, setNewEnergy] = useState<EnergyLevel>('medium');
   const [energyFilter, setEnergyFilter] = useState<EnergyLevel | 'all'>('all');
   const [quickPick, setQuickPick] = useState<DopamineItem | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
@@ -74,7 +101,8 @@ export default function DopamineMenuPage() {
         setItems(data.map((d) => ({
           id: d.id, title: d.title, duration: formatDuration(d.duration_minutes),
           durationMinutes: d.duration_minutes ?? 0, notes: d.notes ?? undefined,
-          category: DB_CATEGORY_MAP[d.category] ?? 'quick', energyLevel: 'medium' as EnergyLevel,
+          category: DB_CATEGORY_MAP[d.category] ?? 'quick',
+          energyLevel: deriveEnergyLevel(d.category, d.duration_minutes),
           lastUsed: formatLastUsed(d.last_used_at),
         })));
       }
@@ -87,11 +115,11 @@ export default function DopamineMenuPage() {
     if (!newTitle.trim() || !addingTo || !profileId) return;
     const id = crypto.randomUUID();
     const durationMinutes = parseInt(newDuration) || 5;
-    setItems((prev) => [...prev, { id, title: newTitle.trim(), duration: newDuration.trim() || '5 min', durationMinutes, category: addingTo, energyLevel: energyFilter === 'all' ? 'medium' : energyFilter }]);
-    setNewTitle(''); setNewDuration(''); setAddingTo(null);
+    setItems((prev) => [...prev, { id, title: newTitle.trim(), duration: newDuration.trim() || '5 min', durationMinutes, category: addingTo, energyLevel: newEnergy }]);
+    setNewTitle(''); setNewDuration(''); setNewEnergy('medium'); setAddingTo(null);
     createClient().from('dopamine_menu').insert({ id, user_id: profileId, title: newTitle.trim(), category: (UI_CATEGORY_MAP[addingTo] ?? 'appetizer') as DopamineCategoryType, duration_minutes: durationMinutes, notes: null, last_used_at: null, created_at: new Date().toISOString() })
       .then(({ error }) => { if (error) console.error('[DopamineMenu] Failed to save item:', error); });
-  }, [newTitle, newDuration, addingTo, energyFilter, profileId]);
+  }, [newTitle, newDuration, addingTo, newEnergy, profileId]);
 
   const handleQuickPick = useCallback(() => {
     const pool = filteredItems.length > 0 ? filteredItems : items;
@@ -103,6 +131,37 @@ export default function DopamineMenuPage() {
       if (++count >= 8) { clearInterval(interval); setIsSpinning(false); }
     }, 120);
   }, [filteredItems, items]);
+
+  const handleLoadStarter = useCallback(() => {
+    if (!profileId) return;
+    const supabase = createClient();
+    const now = new Date().toISOString();
+    const newItems: DopamineItem[] = [];
+    for (const seed of SEED_DOPAMINE_ITEMS) {
+      const id = crypto.randomUUID();
+      newItems.push({
+        id,
+        title: seed.title,
+        duration: formatDuration(seed.duration_minutes),
+        durationMinutes: seed.duration_minutes,
+        category: DB_CATEGORY_MAP[seed.category] ?? 'quick',
+        energyLevel: seed.energy,
+      });
+      supabase.from('dopamine_menu').insert({
+        id,
+        user_id: profileId,
+        title: seed.title,
+        category: seed.category,
+        duration_minutes: seed.duration_minutes,
+        notes: null,
+        last_used_at: null,
+        created_at: now,
+      }).then(({ error }) => {
+        if (error) console.error('[DopamineMenu] Failed to seed item:', error);
+      });
+    }
+    setItems((prev) => [...prev, ...newItems]);
+  }, [profileId]);
 
   return (
     <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as const }} className="p-4 sm:p-6 md:p-8 max-w-2xl mx-auto flex flex-col gap-6 pb-24 md:pb-8">
@@ -135,10 +194,40 @@ export default function DopamineMenuPage() {
         })}
       </motion.div>
 
+      {items.length === 0 && (
+        <div className="flex justify-center">
+          <Button variant="secondary" size="sm" onClick={handleLoadStarter}>
+            Load starter activities
+          </Button>
+        </div>
+      )}
+
       <Modal open={addingTo !== null} onClose={() => setAddingTo(null)} title="Add to your menu">
         <div className="flex flex-col gap-4">
           <Input label="Activity" placeholder="What brings you joy?" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
           <Input label="Duration" placeholder="e.g. 5 min" value={newDuration} onChange={(e) => setNewDuration(e.target.value)} />
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-text-secondary">Energy level</span>
+            <div className="flex gap-2">
+              {ENERGY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setNewEnergy(opt.value)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 cursor-pointer border ${
+                    newEnergy === opt.value
+                      ? opt.value === 'high' ? 'bg-energy-high/10 text-energy-high border-energy-high/20'
+                      : opt.value === 'medium' ? 'bg-energy-medium/10 text-energy-medium border-energy-medium/20'
+                      : opt.value === 'low' ? 'bg-energy-low/10 text-energy-low border-energy-low/20'
+                      : 'bg-energy-recharge/10 text-energy-recharge border-energy-recharge/20'
+                      : 'bg-white/[0.04] text-text-muted border-white/[0.06] hover:bg-white/[0.06]'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <Button onClick={handleAdd} disabled={!newTitle.trim()}>Add to menu</Button>
         </div>
       </Modal>

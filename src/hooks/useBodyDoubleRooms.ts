@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 interface Participant {
@@ -33,11 +33,14 @@ interface NewRoomInput {
 export function useBodyDoubleRooms(profileId: string, displayName: string) {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [joinedRoom, setJoinedRoom] = useState<string | null>(null);
+  const profileIdRef = useRef(profileId);
+  useEffect(() => { profileIdRef.current = profileId; }, [profileId]);
 
   useEffect(() => {
-    async function loadRooms() {
+    const supabase = createClient();
+
+    async function fetchRooms() {
       try {
-        const supabase = createClient();
         const { data: roomData, error: roomError } = await supabase
           .from('body_double_rooms')
           .select('*')
@@ -49,20 +52,32 @@ export function useBodyDoubleRooms(profileId: string, displayName: string) {
         }
 
         const roomIds = roomData.map((r) => r.id);
-        let participants: { id: string; room_id: string; user_id: string; current_task: string | null; joined_at: string; left_at: string | null }[] = [];
+        let participants: { id: string; room_id: string; user_id: string; current_task: string | null; joined_at: string; left_at: string | null; display_name: string | null }[] = [];
 
         if (roomIds.length > 0) {
           const { data: partData, error: partError } = await supabase
             .from('room_participants')
-            .select('id, room_id, user_id, current_task, joined_at, left_at')
+            .select('id, room_id, user_id, current_task, joined_at, left_at, profiles:user_id(display_name)')
             .in('room_id', roomIds)
             .is('left_at', null);
 
           if (!partError && partData) {
-            participants = partData;
+            participants = partData.map((p) => {
+              const profile = p.profiles as unknown as { display_name: string | null } | null;
+              return {
+                id: p.id,
+                room_id: p.room_id,
+                user_id: p.user_id,
+                current_task: p.current_task,
+                joined_at: p.joined_at,
+                left_at: p.left_at,
+                display_name: profile?.display_name ?? null,
+              };
+            });
           }
         }
 
+        const pid = profileIdRef.current;
         setRooms(roomData.map((r) => ({
           id: r.id,
           title: r.title,
@@ -72,7 +87,7 @@ export function useBodyDoubleRooms(profileId: string, displayName: string) {
             .map((p) => ({
               id: p.id,
               userId: p.user_id,
-              name: p.user_id === profileId ? 'You' : `User ${p.id.slice(0, 4)}`,
+              name: p.user_id === pid ? 'You' : (p.display_name || `User ${p.id.slice(0, 4)}`),
               task: p.current_task ?? 'Focusing',
               joinedMinutesAgo: Math.floor((Date.now() - new Date(p.joined_at).getTime()) / 60000),
             })),
@@ -86,7 +101,22 @@ export function useBodyDoubleRooms(profileId: string, displayName: string) {
         console.error('[BodyDouble] Failed to load rooms:', err);
       }
     }
-    loadRooms();
+
+    fetchRooms();
+
+    // Subscribe to realtime changes on room_participants
+    const channel = supabase.channel('room-participant-updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_participants' }, () => {
+        fetchRooms();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'body_double_rooms' }, () => {
+        fetchRooms();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [profileId]);
 
   const handleCreate = useCallback(async (newRoom: NewRoomInput) => {

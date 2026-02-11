@@ -13,6 +13,7 @@ import { SectionHeader } from '@/components/features/habits/SectionHeader';
 import { ConsistencySection } from '@/components/features/habits/ConsistencySection';
 import { useHabitStore } from '@/stores/useHabitStore';
 import { useProfileStore } from '@/stores/useProfileStore';
+import { SEED_HABITS } from '@/lib/seed-data';
 import type { RoutineType } from '@/types/database';
 
 const pageVariants = {
@@ -75,6 +76,21 @@ export default function HabitsPage() {
 
   const handleToggle = useCallback((id: string) => { toggleHabit(id); }, [toggleHabit]);
 
+  const handleLoadStarter = useCallback(() => {
+    if (!profileId) return;
+    const now = new Date().toISOString();
+    for (const seed of SEED_HABITS) {
+      addHabitToStore({
+        ...seed,
+        id: crypto.randomUUID(),
+        user_id: profileId,
+        streak_current: 0,
+        streak_best: 0,
+        created_at: now,
+      });
+    }
+  }, [profileId, addHabitToStore]);
+
   const grouped = useMemo(() => {
     const groups: Partial<Record<RoutineType, HabitData[]>> = {};
     for (const h of habits) {
@@ -120,11 +136,16 @@ export default function HabitsPage() {
       </div>
 
       {habits.length === 0 ? (
-        <EmptyState
-          icon={<Repeat />} title="No habits yet"
-          description="Small routines build momentum. Start with one thing you want to do each day."
-          action={{ label: 'Add a Habit', onClick: () => setShowForm(true) }}
-        />
+        <div className="flex flex-col items-center gap-3">
+          <EmptyState
+            icon={<Repeat />} title="No habits yet"
+            description="Small routines build momentum. Start with one thing you want to do each day."
+            action={{ label: 'Add a Habit', onClick: () => setShowForm(true) }}
+          />
+          <Button variant="secondary" size="sm" onClick={handleLoadStarter}>
+            Load starter habits
+          </Button>
+        </div>
       ) : (
         <>
           <motion.div className="space-y-5" variants={reducedMotion ? undefined : staggerContainer} initial="initial" animate="animate">
@@ -161,7 +182,7 @@ export default function HabitsPage() {
           addHabitToStore({
             id: crypto.randomUUID(), user_id: profileId, title: data.title,
             description: null, cue: null, routine_type: data.routineType,
-            frequency: data.frequency ?? 'daily', custom_days: [], estimated_minutes: 5,
+            frequency: data.frequency ?? 'daily', custom_days: [], estimated_minutes: data.estimatedMinutes ?? 5,
             sort_order: habits.length, streak_current: 0, streak_best: 0,
             is_active: true, created_at: new Date().toISOString(),
           });

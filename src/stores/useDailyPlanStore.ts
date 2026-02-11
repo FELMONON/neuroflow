@@ -35,6 +35,32 @@ function getEnergyRank(energy: EnergyLevel): number {
   return ranks[energy];
 }
 
+/** Persist blocks to Supabase after any mutation */
+async function syncBlocksToSupabase(date: string, blocks: PlanTimeBlock[]) {
+  try {
+    const supabase = getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Strip client-only fields (id, isBreak) before persisting
+    const timeBlocks: TimeBlock[] = blocks.map(({ id: _id, isBreak: _isBreak, ...rest }) => rest);
+
+    await supabase
+      .from('daily_plans')
+      .upsert(
+        {
+          user_id: user.id,
+          plan_date: date,
+          time_blocks: timeBlocks,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id,plan_date' },
+      );
+  } catch (err) {
+    console.error('[useDailyPlanStore] sync error:', err);
+  }
+}
+
 /** Extended block with id + isBreak for plan page compatibility */
 export interface PlanTimeBlock extends TimeBlock {
   id: string;
@@ -66,7 +92,7 @@ interface DailyPlanState {
   scheduleTask: (taskId: string) => void;
   smartSchedule: () => void;
   setCurrentDate: (date: string) => void;
-  hydrateFromSupabase: () => Promise<void>;
+  hydrateFromSupabase: (date?: string) => Promise<void>;
 
   // Selectors
   getCurrentBlock: () => PlanTimeBlock | null;
@@ -85,10 +111,12 @@ export const useDailyPlanStore = create<DailyPlanState>((set, get) => ({
 
   addBlock: (block) => {
     set((state) => ({ blocks: [...state.blocks, block] }));
+    syncBlocksToSupabase(get().currentDate, get().blocks);
   },
 
   removeBlock: (id) => {
     set((state) => ({ blocks: state.blocks.filter((b) => b.id !== id) }));
+    syncBlocksToSupabase(get().currentDate, get().blocks);
   },
 
   reorderBlocks: (blockIds) => {
@@ -99,6 +127,7 @@ export const useDailyPlanStore = create<DailyPlanState>((set, get) => ({
       const remaining = state.blocks.filter((b) => !blockIds.includes(b.id));
       return { blocks: [...ordered, ...remaining] };
     });
+    syncBlocksToSupabase(get().currentDate, get().blocks);
   },
 
   setUnscheduledTasks: (tasks) => set({ unscheduledTasks: tasks }),
@@ -141,16 +170,17 @@ export const useDailyPlanStore = create<DailyPlanState>((set, get) => ({
       blocks: [...state.blocks, ...additions],
       unscheduledTasks: state.unscheduledTasks.filter((t) => t.id !== taskId),
     }));
+    syncBlocksToSupabase(get().currentDate, get().blocks);
   },
 
   smartSchedule: () => {
-    const { blocks, unscheduledTasks } = get();
+    const { blocks: currentBlocks, unscheduledTasks } = get();
     if (unscheduledTasks.length === 0) return;
 
     const endOfDay = 17 * 60;
-    const lastBlock = blocks[blocks.length - 1];
+    const lastBlock = currentBlocks[currentBlocks.length - 1];
     let startSlot: string | null;
-    if (blocks.length === 0) {
+    if (currentBlocks.length === 0) {
       startSlot = '08:00';
     } else {
       const endMin = timeToMinutes(lastBlock.end);
@@ -221,25 +251,26 @@ export const useDailyPlanStore = create<DailyPlanState>((set, get) => ({
       blocks: [...state.blocks, ...newBlocks],
       unscheduledTasks: state.unscheduledTasks.filter((t) => !scheduledTaskIds.includes(t.id)),
     }));
+    syncBlocksToSupabase(get().currentDate, get().blocks);
   },
 
   setCurrentDate: (date) => set({ currentDate: date }),
 
-  hydrateFromSupabase: async () => {
+  hydrateFromSupabase: async (date?: string) => {
     set({ isLoading: true });
     try {
       const supabase = getSupabase();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { set({ isLoading: false }); return; }
 
-      const today = new Date().toISOString().split('T')[0];
-      set({ currentDate: today });
+      const targetDate = date ?? new Date().toISOString().split('T')[0];
+      set({ currentDate: targetDate });
 
       const { data, error } = await supabase
         .from('daily_plans')
         .select('*')
         .eq('user_id', user.id)
-        .eq('plan_date', today)
+        .eq('plan_date', targetDate)
         .single();
 
       if (error && error.code !== 'PGRST116') {
@@ -254,6 +285,8 @@ export const useDailyPlanStore = create<DailyPlanState>((set, get) => ({
           isBreak: b.energy === 'recharge',
         }));
         set({ blocks });
+      } else {
+        set({ blocks: [] });
       }
     } catch (err) {
       console.error('[useDailyPlanStore] hydration error:', err);

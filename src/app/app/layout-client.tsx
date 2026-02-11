@@ -28,8 +28,9 @@ export function AppLayoutClient({ children, serverProfile }: AppLayoutClientProp
       {children}
       <QuickCaptureModal />
       <Toaster
-        position="bottom-right"
+        position="top-right"
         toastOptions={{
+          duration: 3000,
           style: {
             background: 'var(--bg-secondary)',
             color: 'var(--text-primary)',

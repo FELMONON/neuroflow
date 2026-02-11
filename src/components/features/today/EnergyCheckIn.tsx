@@ -4,10 +4,18 @@ import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Zap, Check } from 'lucide-react';
 import clsx from 'clsx';
+import { createClient } from '@/lib/supabase/client';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { useEnergyState } from '@/hooks/useEnergyState';
 import { useGameLoop } from '@/hooks/useGameLoop';
 import type { EnergyLevel, CheckIn } from '@/types/database';
+
+// Lazy singleton Supabase client
+let _supabase: ReturnType<typeof createClient> | null = null;
+function getSupabase() {
+  if (!_supabase) _supabase = createClient();
+  return _supabase;
+}
 
 const ENERGY_OPTIONS: { level: EnergyLevel; emoji: string; label: string; color: string }[] = [
   { level: 'high', emoji: '\u26A1', label: 'Wired', color: 'bg-energy-high/10 text-energy-high border-energy-high/20' },
@@ -30,24 +38,36 @@ export function EnergyCheckIn() {
   const { needsCheckIn } = useEnergyState();
   const { onCheckIn } = useGameLoop();
 
-  const profileId = useProfileStore((s) => s.profile?.id ?? '');
-
-  const handleSelect = useCallback((level: EnergyLevel) => {
+  const handleSelect = useCallback(async (level: EnergyLevel) => {
     setSelected(level);
-    // Write check-in to profile store
-    const checkIn: CheckIn = {
-      id: `checkin-${Date.now()}`,
-      user_id: profileId,
-      mood: null,
-      energy: ENERGY_LEVEL_MAP[level],
-      focus_ability: null,
-      emotions: [],
-      note: null,
-      created_at: new Date().toISOString(),
-    };
-    setLatestCheckIn(checkIn);
+
+    // Persist to Supabase first, mirroring the Reflect page pattern
+    const supabase = getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: checkInRow, error } = await supabase
+      .from('check_ins')
+      .insert({
+        user_id: user.id,
+        mood: null,
+        energy: ENERGY_LEVEL_MAP[level],
+        focus_ability: null,
+        emotions: [],
+        note: null,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[EnergyCheckIn] persist error:', error.message);
+      return;
+    }
+
+    // Update in-memory store with the persisted record
+    if (checkInRow) setLatestCheckIn(checkInRow as CheckIn);
     onCheckIn();
-  }, [setLatestCheckIn, onCheckIn, profileId]);
+  }, [setLatestCheckIn, onCheckIn]);
 
   // Hide if already checked in recently and dismissed
   if (dismissed) return null;

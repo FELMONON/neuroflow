@@ -1,4 +1,4 @@
-import type { Task, Habit, HabitCompletion, TimeBlock, CheckIn, EnergyLevel } from '@/types/database';
+import type { Task, Habit, HabitCompletion, TimeBlock, CheckIn, EnergyLevel, DopamineCategory } from '@/types/database';
 
 // ─── Seed Tasks ───────────────────────────────────────────────
 // Mirrors the MOCK_TASKS from today/page.tsx — used by useTaskStore when not authenticated
@@ -143,6 +143,18 @@ export const SEED_CHECK_INS: CheckIn[] = [
 // ─── Seed Habit Completions (today) ───────────────────────────
 // Pre-filled so the Today page shows some habits already done
 export const SEED_HABIT_COMPLETIONS: HabitCompletion[] = [];
+
+// ─── Seed Dopamine Menu Items ─────────────────────────────────
+export const SEED_DOPAMINE_ITEMS: { title: string; category: DopamineCategory; duration_minutes: number; energy: EnergyLevel }[] = [
+  { title: 'Listen to a favorite song', category: 'appetizer', duration_minutes: 4, energy: 'low' },
+  { title: 'Walk around the block', category: 'appetizer', duration_minutes: 10, energy: 'medium' },
+  { title: 'Doodle or sketch something', category: 'entree', duration_minutes: 15, energy: 'medium' },
+  { title: 'Watch a short video essay', category: 'entree', duration_minutes: 20, energy: 'low' },
+  { title: 'Dance to one song', category: 'side', duration_minutes: 4, energy: 'high' },
+  { title: 'Quick tidy of desk', category: 'side', duration_minutes: 5, energy: 'medium' },
+  { title: 'Play a favorite game level', category: 'dessert', duration_minutes: 15, energy: 'recharge' },
+  { title: 'Make a fancy coffee/tea', category: 'dessert', duration_minutes: 10, energy: 'recharge' },
+];
 
 // ─── Seed Unlocked Achievement Slugs ──────────────────────────
 export const SEED_UNLOCKED_ACHIEVEMENTS: Record<string, string> = {

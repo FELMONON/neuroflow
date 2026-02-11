@@ -62,6 +62,7 @@ export default function PlanPage() {
   const storeSmartSchedule = useDailyPlanStore((s) => s.smartSchedule);
   const setBlocks = useDailyPlanStore((s) => s.setBlocks);
   const setUnscheduledTasks = useDailyPlanStore((s) => s.setUnscheduledTasks);
+  const hydrateFromSupabase = useDailyPlanStore((s) => s.hydrateFromSupabase);
   const allTasks = useTaskStore((s) => s.tasks);
   const profile = useProfileStore((s) => s.profile);
   const energyPattern = profile?.energy_pattern ?? DEFAULT_ENERGY_PATTERN;
@@ -76,6 +77,40 @@ export default function PlanPage() {
     }, 60_000);
     return () => clearInterval(interval);
   }, []);
+
+  // Re-fetch blocks from Supabase whenever the displayed date changes
+  useEffect(() => {
+    const dateStr = currentDate.toISOString().split('T')[0];
+    // Skip the SSR-safe default date
+    if (dateStr === '2026-01-01') return;
+    hydrateFromSupabase(dateStr);
+  }, [currentDate, hydrateFromSupabase]);
+
+  // Populate unscheduled tasks from the task store
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const scheduledTaskIds = new Set(
+      blocks
+        .filter((b) => b.task_id)
+        .map((b) => b.task_id as string),
+    );
+    const unscheduled = allTasks
+      .filter((t) => {
+        if (t.status === 'done' || t.status === 'archived') return false;
+        if (scheduledTaskIds.has(t.id)) return false;
+        // Include tasks due today, overdue, or with no due date
+        if (t.due_date && t.due_date > today) return false;
+        return true;
+      })
+      .map((t) => ({
+        id: t.id,
+        title: t.title,
+        estimate: `${t.estimated_minutes ?? 25}m`,
+        estimateMinutes: t.estimated_minutes ?? 25,
+        energy: t.energy_required,
+      }));
+    setUnscheduledTasks(unscheduled);
+  }, [allTasks, blocks, setUnscheduledTasks]);
 
   const isToday = useMemo(() => currentDate.toDateString() === new Date().toDateString(), [currentDate]);
   const endOfDayMinutes = useMemo(() => {

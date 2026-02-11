@@ -1,5 +1,8 @@
 import type { AchievementCategory } from '@/types/database';
 
+// Re-export level utilities from the single source of truth
+export { getLevelFromXP as calculateLevel, xpForNextLevel, xpProgressInLevel } from '@/lib/levels';
+
 export interface AchievementDefinition {
   slug: string;
   title: string;
@@ -144,26 +147,3 @@ export function getAllAchievements(): AchievementDefinition[] {
   return Object.values(ACHIEVEMENTS);
 }
 
-export function calculateLevel(xp: number): number {
-  // Each level requires progressively more XP: level N requires N * 100 XP
-  // Level 1: 0 XP, Level 2: 100 XP, Level 3: 300 XP, Level 4: 600 XP...
-  let level = 1;
-  let xpNeeded = 0;
-  while (xpNeeded + level * 100 <= xp) {
-    xpNeeded += level * 100;
-    level++;
-  }
-  return level;
-}
-
-export function xpForNextLevel(currentLevel: number): number {
-  return currentLevel * 100;
-}
-
-export function xpProgressInLevel(xp: number, level: number): number {
-  let xpAtLevelStart = 0;
-  for (let i = 1; i < level; i++) {
-    xpAtLevelStart += i * 100;
-  }
-  return xp - xpAtLevelStart;
-}

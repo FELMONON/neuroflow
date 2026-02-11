@@ -12,6 +12,7 @@ import { InboxProcessor, type InboxAction } from '@/components/features/tasks/In
 import { QuickAddBar } from '@/components/features/tasks/QuickAddBar';
 import { Button, Badge, EmptyState } from '@/components/ui';
 import { useProfileStore } from '@/stores/useProfileStore';
+import { SEED_TASKS } from '@/lib/seed-data';
 import type { Task, Subtask } from '@/types/database';
 
 const pageVariants = {
@@ -69,6 +70,7 @@ export default function TasksPage() {
   }, [tasks, updateTask, completeTask]);
 
   const handleAddTask = useCallback((taskData: Partial<Task>) => {
+    if (!profileId) return;
     addTask(createNewTask(profileId, tasks.length, taskData));
   }, [tasks.length, addTask, profileId]);
 
@@ -80,9 +82,28 @@ export default function TasksPage() {
     updateTask(taskId, { ai_subtasks: subtasks });
   }, [updateTask]);
 
+  const profileReady = profileId.length > 0;
+
   const handleQuickAdd = useCallback((title: string) => {
+    if (!profileReady) return;
     handleAddTask({ title, status: 'inbox' });
-  }, [handleAddTask]);
+  }, [handleAddTask, profileReady]);
+
+  const handleLoadStarter = useCallback(() => {
+    if (!profileId) return;
+    const now = new Date().toISOString();
+    for (const seed of SEED_TASKS) {
+      addTask({
+        ...seed,
+        id: crypto.randomUUID(),
+        user_id: profileId,
+        status: seed.status === 'done' ? 'done' : 'today',
+        completed_at: seed.status === 'done' ? now : null,
+        created_at: now,
+        updated_at: now,
+      });
+    }
+  }, [profileId, addTask]);
 
   const handleInboxAction = useCallback((taskId: string, action: InboxAction) => {
     switch (action) {
@@ -120,10 +141,17 @@ export default function TasksPage() {
       <QuickAddBar onAdd={handleQuickAdd} />
 
       {filteredTasks.length === 0 ? (
-        <EmptyState icon={<Inbox />} title="Your inbox is clear"
-          description="Nothing here right now — capture something new whenever it pops into your head."
-          action={{ label: 'Add a Task', onClick: () => setShowTaskForm(true) }}
-        />
+        <div className="flex flex-col items-center gap-3">
+          <EmptyState icon={<Inbox />} title="Your inbox is clear"
+            description="Nothing here right now — capture something new whenever it pops into your head."
+            action={{ label: 'Add a Task', onClick: () => setShowTaskForm(true) }}
+          />
+          {tasks.length === 0 && (
+            <Button variant="secondary" size="sm" onClick={handleLoadStarter}>
+              Load starter tasks
+            </Button>
+          )}
+        </div>
       ) : (
         <TaskList tasks={filteredTasks} groupBy={groupBy} onToggleComplete={handleToggleComplete}
           onBreakDown={setBreakdownTask} onEdit={(task) => setEditingTask(task)} onReorder={reorderTasks}
@@ -131,13 +159,14 @@ export default function TasksPage() {
       )}
 
       <div className="fixed bottom-8 right-8 z-40 sm:hidden">
-        <button onClick={() => setShowTaskForm(true)}
-          className="w-14 h-14 rounded-full bg-accent-flow text-white shadow-lg flex items-center justify-center cursor-pointer hover:bg-accent-flow/80 transition-all duration-200 active:scale-[0.98]"
+        <button onClick={() => profileReady && setShowTaskForm(true)}
+          disabled={!profileReady}
+          className="w-14 h-14 rounded-full bg-accent-flow text-white shadow-lg flex items-center justify-center cursor-pointer hover:bg-accent-flow/80 transition-all duration-200 active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
           aria-label="Add task"
         ><Plus size={24} /></button>
       </div>
 
-      <TaskForm open={showTaskForm} onClose={() => setShowTaskForm(false)} onSubmit={handleAddTask} mode="create" />
+      <TaskForm open={showTaskForm && profileReady} onClose={() => setShowTaskForm(false)} onSubmit={handleAddTask} mode="create" />
       <TaskForm open={!!editingTask} onClose={() => setEditingTask(null)} onSubmit={handleEditTask} initialTask={editingTask ?? undefined} mode="edit" />
       <AIBreakdown open={!!breakdownTask} onClose={() => setBreakdownTask(null)} task={breakdownTask} onApply={handleApplyBreakdown} />
       <InboxProcessor open={showInbox} onClose={() => setShowInbox(false)} tasks={inboxTasks} onAction={handleInboxAction} />

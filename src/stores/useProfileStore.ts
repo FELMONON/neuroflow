@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { createClient } from '@/lib/supabase/client';
+import { LEVEL_THRESHOLDS, getLevelFromXP, getLevelName as getLevelNameFromLib } from '@/lib/levels';
 import type { Profile, CheckIn } from '@/types/database';
 
 // Lazy singleton — created once on first mutation that needs Supabase
@@ -25,13 +26,6 @@ interface ProfileState {
   getLevelName: () => string;
   getXPForNextLevel: () => number;
 }
-
-const LEVEL_THRESHOLDS = [0, 100, 300, 600, 1000, 1500, 2200, 3000, 4000, 5000, 7000, 9000, 12000, 15000, 20000];
-const LEVEL_NAMES = [
-  'Seedling', 'Sprout', 'Bud', 'Sapling', 'Young Tree',
-  'Growing Tree', 'Branching Out', 'Leafy', 'Blossoming', 'Mighty Oak',
-  'Deep Roots', 'Canopy', 'Ancient', 'Legendary', 'Ancient Forest',
-];
 
 function syncProfileToSupabase(profileId: string, updates: Partial<Profile>) {
   const supabase = getSupabase();
@@ -62,10 +56,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     const prev = get().profile;
     if (!prev) return;
     const newXP = prev.xp_total + amount;
-    let newLevel = prev.level;
-    while (newLevel < LEVEL_THRESHOLDS.length - 1 && newXP >= LEVEL_THRESHOLDS[newLevel]) {
-      newLevel++;
-    }
+    const newLevel = getLevelFromXP(newXP);
     set({ profile: { ...prev, xp_total: newXP, level: newLevel } });
     syncProfileToSupabase(prev.id, { xp_total: newXP, level: newLevel });
   },
@@ -96,7 +87,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
 
   getLevelName: () => {
     const level = get().profile?.level ?? 1;
-    return LEVEL_NAMES[Math.min(level - 1, LEVEL_NAMES.length - 1)];
+    return getLevelNameFromLib(level);
   },
 
   getXPForNextLevel: () => {

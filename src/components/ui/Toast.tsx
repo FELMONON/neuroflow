@@ -1,6 +1,6 @@
 'use client';
 
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { CheckCircle, AlertCircle, Info, X } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -65,19 +65,5 @@ function showToast({ message, variant = 'info', duration = 3000 }: ShowToastOpti
   );
 }
 
-interface ToastProviderProps {
-  className?: string;
-}
-
-function ToastProvider({ className }: ToastProviderProps) {
-  return (
-    <Toaster
-      position="top-right"
-      toastOptions={{ duration: 3000 }}
-      containerClassName={className}
-    />
-  );
-}
-
-export { showToast, ToastProvider };
+export { showToast };
 export type { ShowToastOptions, ToastVariant };

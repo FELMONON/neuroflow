@@ -9,6 +9,7 @@ import { useSessionStore } from '@/stores/useSessionStore';
 import { useTaskStore } from '@/stores/useTaskStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useProfileStore } from '@/stores/useProfileStore';
+import { useAudioEngine } from '@/hooks/useAudioEngine';
 import { Button } from '@/components/ui';
 
 interface ActiveSessionProps {
@@ -28,6 +29,9 @@ function ActiveSession({ onComplete }: ActiveSessionProps) {
   const setFocusModeActive = useUIStore((s) => s.setFocusModeActive);
   const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Drive Tone.js audio from store state
+  useAudioEngine(soundscape, volume);
 
   const currentTask = currentSession?.task_id
     ? tasks.find((t) => t.id === currentSession.task_id) ?? null

@@ -58,6 +58,7 @@ export default function FocusPage() {
   const router = useRouter();
   const startSession = useSessionStore((s) => s.startSession);
   const currentSession = useSessionStore((s) => s.currentSession);
+  const setStatus = useSessionStore((s) => s.setStatus);
   const setFocusModeActive = useUIStore((s) => s.setFocusModeActive);
   const completeTaskStore = useTaskStore((s) => s.completeTask);
   const { onFocusSessionComplete, onTaskComplete } = useGameLoop();
@@ -111,7 +112,7 @@ export default function FocusPage() {
       {phase === 'break' && (
         <BreakPhase
           sessionMinutes={sessionMinutes}
-          onTakeBreak={() => {}}
+          onTakeBreak={() => setStatus('break')}
           onSkip={handleBreakToReview}
         />
       )}

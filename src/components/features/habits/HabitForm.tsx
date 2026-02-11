@@ -10,6 +10,7 @@ interface HabitFormData {
   title: string;
   routineType: RoutineType;
   frequency: HabitFrequency;
+  estimatedMinutes: number;
 }
 
 interface HabitFormProps {
@@ -57,6 +58,7 @@ export function HabitForm({ open, onClose, onSubmit }: HabitFormProps) {
   const [titleTouched, setTitleTouched] = useState(false);
   const [routineType, setRoutineType] = useState<RoutineType>('morning');
   const [frequency, setFrequency] = useState<HabitFrequency>('daily');
+  const [estimatedMinutes, setEstimatedMinutes] = useState(5);
 
   const titleError = titleTouched && !title.trim() ? 'Habit name is required' : undefined;
 
@@ -65,13 +67,14 @@ export function HabitForm({ open, onClose, onSubmit }: HabitFormProps) {
       setTitleTouched(true);
       return;
     }
-    onSubmit({ title: title.trim(), routineType, frequency });
+    onSubmit({ title: title.trim(), routineType, frequency, estimatedMinutes });
     setTitle('');
     setTitleTouched(false);
     setRoutineType('morning');
     setFrequency('daily');
+    setEstimatedMinutes(5);
     onClose();
-  }, [title, routineType, frequency, onSubmit, onClose]);
+  }, [title, routineType, frequency, estimatedMinutes, onSubmit, onClose]);
 
   return (
     <Modal open={open} onClose={onClose} title="New Habit" size="sm">
@@ -156,6 +159,25 @@ export function HabitForm({ open, onClose, onSubmit }: HabitFormProps) {
           </div>
         </div>
 
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-text-secondary">
+            Duration <span className="font-mono text-xs text-accent-flow">{estimatedMinutes} min</span>
+          </label>
+          <input
+            type="range"
+            min={1}
+            max={60}
+            step={1}
+            value={estimatedMinutes}
+            onChange={(e) => setEstimatedMinutes(Number(e.target.value))}
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-white/[0.10] accent-accent-flow"
+          />
+          <div className="flex justify-between text-[10px] text-text-muted">
+            <span>1 min</span>
+            <span>60 min</span>
+          </div>
+        </div>
+
         {/* Habit preview */}
         {title.trim() && (
           <div className="bg-bg-secondary rounded-xl border border-white/[0.06] p-4">
@@ -165,7 +187,7 @@ export function HabitForm({ open, onClose, onSubmit }: HabitFormProps) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-text-primary truncate">{title.trim()}</p>
                 <p className="text-xs text-text-muted mt-0.5">
-                  {routineLabel[routineType]} &middot; {frequencyLabel[frequency]}
+                  {routineLabel[routineType]} &middot; {frequencyLabel[frequency]} &middot; {estimatedMinutes} min
                 </p>
               </div>
             </div>

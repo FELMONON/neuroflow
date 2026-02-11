@@ -10,7 +10,7 @@ export type { InputProps } from './Input';
 export { Modal } from './Modal';
 export type { ModalProps, ModalSize } from './Modal';
 
-export { showToast, ToastProvider } from './Toast';
+export { showToast } from './Toast';
 export type { ShowToastOptions, ToastVariant } from './Toast';
 
 export { ProgressBar } from './ProgressBar';
