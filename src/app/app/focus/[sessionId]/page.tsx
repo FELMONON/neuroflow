@@ -8,7 +8,8 @@ import { useSessionStore } from '@/stores/useSessionStore';
 export default function SessionPage() {
   const params = useParams();
   const router = useRouter();
-  const sessionId = params.sessionId as string;
+  const rawSessionId = params.sessionId;
+  const sessionId = typeof rawSessionId === 'string' ? rawSessionId : Array.isArray(rawSessionId) ? rawSessionId[0] : '';
   const { currentSession, status } = useSessionStore();
 
   useEffect(() => {
@@ -22,7 +23,10 @@ export default function SessionPage() {
   if (!currentSession) {
     return (
       <div className="min-h-screen bg-bg-primary flex items-center justify-center">
-        <p className="text-text-muted">Loading session...</p>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-32 h-32 rounded-full bg-white/[0.04] animate-pulse" />
+          <div className="w-48 h-4 rounded bg-white/[0.04] animate-pulse" />
+        </div>
       </div>
     );
   }

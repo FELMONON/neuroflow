@@ -90,7 +90,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+    }
     const { action, metadata } = body as {
       action: string;
       metadata?: Record<string, unknown>;
@@ -106,6 +111,13 @@ export async function POST(request: NextRequest) {
     if (!VALID_ACTIONS.includes(action as XPAction)) {
       return NextResponse.json(
         { error: `Invalid action. Valid actions: ${VALID_ACTIONS.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
+    if (metadata !== undefined && (typeof metadata !== 'object' || metadata === null || Array.isArray(metadata))) {
+      return NextResponse.json(
+        { error: 'metadata must be an object' },
         { status: 400 }
       );
     }

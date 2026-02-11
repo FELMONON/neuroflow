@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Loader2, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -116,7 +116,7 @@ export function FirstWinStep({ onComplete, saving }: FirstWinStepProps) {
                   key={task}
                   type="button"
                   onClick={() => setTaskTitle(task)}
-                  className="px-3 py-1.5 rounded-full text-xs bg-white/[0.04] border border-white/[0.06] text-text-secondary hover:text-text-primary hover:border-accent-flow/30 transition-all duration-200 active:scale-[0.98] cursor-pointer"
+                  className="px-3 py-1.5 rounded-full text-xs bg-white/[0.04] border border-white/[0.06] text-text-secondary hover:text-text-primary hover:border-accent-flow/30 transition-all duration-200 active:scale-[0.98] cursor-pointer focus-visible:ring-2 focus-visible:ring-accent-flow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary focus-visible:outline-none"
                 >
                   {task}
                 </button>
@@ -133,7 +133,7 @@ export function FirstWinStep({ onComplete, saving }: FirstWinStepProps) {
           <button
             type="button"
             onClick={() => onComplete('')}
-            className="mt-4 text-xs text-text-muted hover:text-text-secondary transition-all duration-200 cursor-pointer"
+            className="mt-4 text-xs text-text-muted hover:text-text-secondary transition-all duration-200 cursor-pointer rounded-lg px-2 py-1 focus-visible:ring-2 focus-visible:ring-accent-flow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary focus-visible:outline-none"
           >
             Skip and set up later
           </button>
@@ -141,9 +141,18 @@ export function FirstWinStep({ onComplete, saving }: FirstWinStepProps) {
       )}
 
       {phase === 'loading' && (
-        <div className="flex flex-col items-center py-16">
-          <Loader2 size={24} className="animate-spin text-text-muted" />
+        <div className="flex flex-col items-center py-16" role="status" aria-label="Loading">
+          <div className="flex gap-1.5">
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                className="w-2 h-2 rounded-full bg-accent-flow animate-pulse"
+                style={{ animationDelay: `${i * 150}ms` }}
+              />
+            ))}
+          </div>
           <p className="text-sm text-text-muted mt-4">Breaking it down...</p>
+          <span className="sr-only">Loading...</span>
         </div>
       )}
 
@@ -171,7 +180,8 @@ export function FirstWinStep({ onComplete, saving }: FirstWinStepProps) {
                     <button
                       type="button"
                       onClick={() => toggleStep(i)}
-                      className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                      aria-label={done ? `Mark step "${subtask.title}" incomplete` : `Mark step "${subtask.title}" complete`}
+                      className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-all duration-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-accent-flow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary focus-visible:outline-none ${
                         done
                           ? 'bg-accent-grow border-accent-grow'
                           : 'border-white/[0.2] hover:border-accent-flow'

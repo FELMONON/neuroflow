@@ -53,11 +53,11 @@ function ProgressBar({
         aria-label={label ?? 'Progress'}
       >
         <div
-          className={clsx('h-full rounded-full', fillColor ?? 'bg-accent-flow')}
-          style={{
-            width: `${percent}%`,
-            transition: 'width 0.3s ease',
-          }}
+          className={clsx(
+            'h-full rounded-full transition-[width] duration-300 ease-out motion-reduce:transition-none',
+            fillColor ?? 'bg-accent-flow',
+          )}
+          style={{ width: `${percent}%` }}
         />
       </div>
     </div>

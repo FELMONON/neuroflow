@@ -116,8 +116,8 @@ export function CoachNudge() {
                 <span className="text-xs font-medium text-accent-flow">AI Coach</span>
                 <button
                   onClick={() => setDismissed(true)}
-                  className="text-text-muted hover:text-text-secondary transition-colors cursor-pointer p-0.5"
-                  aria-label="Dismiss"
+                  className="text-text-muted hover:text-text-secondary transition-colors cursor-pointer p-0.5 rounded-lg focus-visible:ring-2 focus-visible:ring-accent-flow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary focus-visible:outline-none"
+                  aria-label="Dismiss coach nudge"
                 >
                   <X size={12} />
                 </button>
@@ -136,7 +136,7 @@ export function CoachNudge() {
               {nudge.action && ACTION_ROUTES[nudge.action] && (
                 <button
                   onClick={handleAction}
-                  className="flex items-center gap-1.5 mt-2.5 text-xs font-medium text-accent-flow hover:text-accent-flow/80 transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 mt-2.5 text-xs font-medium text-accent-flow hover:text-accent-flow/80 transition-colors cursor-pointer rounded-lg focus-visible:ring-2 focus-visible:ring-accent-flow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary focus-visible:outline-none"
                 >
                   <span>
                     {nudge.action === 'start_focus' && 'Start a focus session'}

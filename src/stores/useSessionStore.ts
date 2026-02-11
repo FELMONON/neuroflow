@@ -2,6 +2,18 @@ import { create } from 'zustand';
 import { createClient } from '@/lib/supabase/client';
 import type { FocusSession, ParkingLotItem } from '@/types/database';
 
+// Lazy singleton — created once on first mutation that needs Supabase
+let _supabase: ReturnType<typeof createClient> | null = null;
+function getSupabase() {
+  if (!_supabase) _supabase = createClient();
+  return _supabase;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isPersistedId(id: string): boolean {
+  return UUID_RE.test(id);
+}
+
 type SessionStatus = 'idle' | 'setup' | 'running' | 'paused' | 'break' | 'complete';
 
 interface SessionState {
@@ -20,6 +32,7 @@ interface SessionState {
   setTimeRemaining: (seconds: number) => void;
   extendSession: (minutes: number) => void;
   addToParkingLot: (item: ParkingLotItem) => void;
+  removeParkingLotItem: (index: number) => void;
   setSoundscape: (soundscape: string) => void;
   setVolume: (volume: number) => void;
   setStatus: (status: SessionStatus) => void;
@@ -34,13 +47,24 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   soundscape: 'brown_noise',
   volume: 0.5,
 
-  startSession: (session) =>
+  startSession: (session) => {
     set({
       currentSession: session,
       status: 'running',
       timeRemaining: session.planned_duration * 60,
       parkingLot: [],
-    }),
+    });
+    // Persist the new session row to Supabase
+    if (isPersistedId(session.id)) {
+      const supabase = getSupabase();
+      supabase
+        .from('focus_sessions')
+        .insert(session)
+        .then(({ error }) => {
+          if (error) console.error('[SessionStore] Failed to start session:', error.message);
+        });
+    }
+  },
 
   pauseSession: () => set({ status: 'paused' }),
 
@@ -65,27 +89,35 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       ended_at: endedAt,
     };
 
-    // Persist to Supabase
-    const supabase = createClient();
-    supabase
-      .from('focus_sessions')
-      .insert(completedSession)
-      .then(({ error }) => {
-        if (error) console.error('[SessionStore] Failed to save session:', error);
-      });
-
-    // Persist parking lot items
-    const parkingLot = get().parkingLot;
-    if (parkingLot.length > 0) {
+    // Persist to Supabase — update existing row if persisted, insert otherwise
+    if (isPersistedId(session.id)) {
+      const supabase = getSupabase();
       supabase
-        .from('parking_lot')
-        .insert(parkingLot.map((item) => ({
-          ...item,
-          captured_during_session_id: session.id,
-        })))
+        .from('focus_sessions')
+        .update({
+          actual_duration: actualMinutes,
+          focus_quality: quality ?? null,
+          notes: notes ?? session.notes,
+          ended_at: endedAt,
+        })
+        .eq('id', session.id)
         .then(({ error }) => {
-          if (error) console.error('[SessionStore] Failed to save parking lot:', error);
+          if (error) console.error('[SessionStore] Failed to save session:', error.message);
         });
+
+      // Persist parking lot items
+      const parkingLot = get().parkingLot;
+      if (parkingLot.length > 0) {
+        supabase
+          .from('parking_lot')
+          .insert(parkingLot.map((item) => ({
+            ...item,
+            captured_during_session_id: session.id,
+          })))
+          .then(({ error }) => {
+            if (error) console.error('[SessionStore] Failed to save parking lot:', error.message);
+          });
+      }
     }
 
     set({
@@ -103,6 +135,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   addToParkingLot: (item) =>
     set((state) => ({ parkingLot: [...state.parkingLot, item] })),
+
+  removeParkingLotItem: (index) =>
+    set((state) => ({ parkingLot: state.parkingLot.filter((_, i) => i !== index) })),
 
   setSoundscape: (soundscape) => set({ soundscape }),
   setVolume: (volume) => set({ volume }),

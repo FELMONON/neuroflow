@@ -133,11 +133,15 @@ export const useHabitStore = create<HabitState>((set, get) => ({
         supabase.from('habit_completions').select('*').eq('user_id', user.id).eq('completed_date', todayDateStr()),
       ]);
 
-      if (habitsRes.data) {
-        set({ habits: habitsRes.data as Habit[] });
+      if (habitsRes.error) {
+        console.error('[useHabitStore] habits fetch error:', habitsRes.error.message);
+      } else if (habitsRes.data) {
+        set({ habits: habitsRes.data });
       }
-      if (completionsRes.data) {
-        set({ completions: completionsRes.data as HabitCompletion[] });
+      if (completionsRes.error) {
+        console.error('[useHabitStore] completions fetch error:', completionsRes.error.message);
+      } else if (completionsRes.data) {
+        set({ completions: completionsRes.data });
       }
     } catch (err) {
       console.error('[useHabitStore] hydration error:', err);

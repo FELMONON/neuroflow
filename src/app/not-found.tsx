@@ -14,7 +14,7 @@ export default function NotFound() {
         Looks like you wandered off the path. Let&apos;s get you back.
       </p>
       <Link
-        href="/app/today"
+        href="/"
         className="bg-accent-flow hover:bg-accent-flow/80 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 active:scale-[0.98]"
       >
         Go home

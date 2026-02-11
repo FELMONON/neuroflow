@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, type KeyboardEvent } from 'react';
 import clsx from 'clsx';
 
 interface ScaleInputProps {
@@ -31,6 +31,21 @@ function ScaleInput({
     [controlledValue, onChange],
   );
 
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = Math.min(5, value + 1);
+        handleSelect(next);
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prev = Math.max(1, value - 1);
+        handleSelect(prev);
+      }
+    },
+    [value, handleSelect],
+  );
+
   return (
     <div className={clsx('flex flex-col gap-2', className)}>
       {label && (
@@ -40,13 +55,14 @@ function ScaleInput({
         {lowLabel && (
           <span className="text-xs text-text-muted shrink-0">{lowLabel}</span>
         )}
-        <div className="flex gap-1" role="radiogroup" aria-label={label ?? 'Scale input'}>
+        <div className="flex gap-1" role="radiogroup" aria-label={label ?? 'Scale input'} onKeyDown={handleKeyDown}>
           {[1, 2, 3, 4, 5].map((n) => (
             <button
               key={n}
               type="button"
               role="radio"
               aria-checked={value === n}
+              tabIndex={value === n ? 0 : -1}
               onClick={() => handleSelect(n)}
               aria-label={`${n} out of 5`}
               className={clsx(

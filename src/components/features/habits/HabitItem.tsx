@@ -48,6 +48,8 @@ export function HabitItem({
   return (
     <button
       onClick={() => onToggle(id)}
+      aria-pressed={completed}
+      aria-label={completed ? `Mark "${title}" incomplete` : `Mark "${title}" complete`}
       className={clsx(
         'flex items-center gap-3 w-full px-4 text-left transition-all duration-200 active:scale-[0.98] cursor-pointer',
         'focus-visible:ring-2 focus-visible:ring-accent-flow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary focus-visible:outline-none',

@@ -137,6 +137,7 @@ export function MobileNav() {
           {!isOnFocusPage && (
             <button
               onClick={toggleQuickCapture}
+              aria-label="Quick capture"
               className="flex flex-col items-center gap-0.5 flex-1 py-1 cursor-pointer rounded-lg text-accent-flow focus-visible:ring-2 focus-visible:ring-accent-flow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary focus-visible:outline-none transition-all duration-200 active:scale-[0.98]"
             >
               <div className="w-6 h-6 rounded-full bg-accent-flow/20 flex items-center justify-center">
@@ -148,6 +149,8 @@ export function MobileNav() {
 
           <button
             onClick={() => setMoreOpen(true)}
+            aria-label="More navigation options"
+            aria-expanded={moreOpen}
             className={`flex flex-col items-center gap-0.5 flex-1 py-1 cursor-pointer rounded-lg focus-visible:ring-2 focus-visible:ring-accent-flow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary focus-visible:outline-none transition-all duration-200 active:scale-[0.98] ${
               isMoreActive ? 'text-accent-flow bg-accent-flow/10' : 'text-white/[0.4] hover:text-white/[0.7]'
             }`}

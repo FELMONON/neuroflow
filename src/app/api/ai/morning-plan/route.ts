@@ -41,7 +41,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+    }
     const { tasks, energyPattern, timezone } = body as {
       tasks: Task[];
       energyPattern: {
@@ -67,9 +72,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!energyPattern) {
+    if (!energyPattern || typeof energyPattern !== 'object') {
       return NextResponse.json(
         { error: 'energyPattern is required' },
+        { status: 400 }
+      );
+    }
+
+    const timePattern = /^\d{2}:\d{2}$/;
+    if (
+      !energyPattern.peak_start || !timePattern.test(energyPattern.peak_start) ||
+      !energyPattern.peak_end || !timePattern.test(energyPattern.peak_end) ||
+      !energyPattern.dip_start || !timePattern.test(energyPattern.dip_start) ||
+      !energyPattern.dip_end || !timePattern.test(energyPattern.dip_end)
+    ) {
+      return NextResponse.json(
+        { error: 'energyPattern fields must be in HH:MM format' },
+        { status: 400 }
+      );
+    }
+
+    if (timezone !== undefined && (typeof timezone !== 'string' || timezone.length > 100)) {
+      return NextResponse.json(
+        { error: 'timezone must be a string of 100 characters or less' },
         { status: 400 }
       );
     }
@@ -115,8 +140,15 @@ Return ONLY the JSON, no other text.`,
     }
 
     return NextResponse.json(plan);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('morning-plan error:', error);
+
+    if (error instanceof Anthropic.APIError) {
+      return NextResponse.json(
+        { error: 'AI service is temporarily unavailable. Please try again later.' },
+        { status: 502 }
+      );
+    }
 
     if (error instanceof SyntaxError) {
       return NextResponse.json(

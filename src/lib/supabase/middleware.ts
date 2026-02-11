@@ -31,6 +31,15 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // /reset-password requires a valid recovery session — allow if user is present
+  // (user gets set from the recovery token exchanged at /auth/callback).
+  // If no session, redirect to login instead of showing a broken form.
+  if (pathname === '/reset-password' && !user) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
+  }
+
   // Protect /app/* and /onboarding routes — redirect to login if no session
   if ((pathname.startsWith('/app') || pathname === '/onboarding') && !user) {
     const url = request.nextUrl.clone();
@@ -38,7 +47,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Redirect authenticated users away from login/signup
+  // Redirect authenticated users away from login/signup (but NOT from /reset-password)
   if ((pathname === '/login' || pathname === '/signup') && user) {
     const url = request.nextUrl.clone();
     url.pathname = '/app/today';

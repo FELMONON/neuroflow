@@ -17,6 +17,9 @@ export async function POST() {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
+    // Sign out first to clear the session before deletion
+    await supabase.auth.signOut();
+
     const adminClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       serviceRoleKey,
@@ -28,9 +31,6 @@ export async function POST() {
       console.error('Failed to delete user account:', error.message);
       return NextResponse.json({ error: 'Failed to delete account' }, { status: 500 });
     }
-
-    // Sign out to clear the server-side session after deletion
-    await supabase.auth.signOut();
 
     return NextResponse.json({ success: true });
   } catch (error) {

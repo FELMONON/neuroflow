@@ -97,7 +97,7 @@ export function HabitForm({ open, onClose, onSubmit }: HabitFormProps) {
                     key={habit}
                     type="button"
                     onClick={() => { setTitle(habit); setTitleTouched(false); }}
-                    className="px-2.5 py-1 rounded-lg text-xs bg-white/[0.04] border border-white/[0.06] text-text-secondary hover:text-text-primary hover:border-accent-flow/30 transition-all duration-200 active:scale-[0.98] cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg text-xs bg-white/[0.04] border border-white/[0.06] text-text-secondary hover:text-text-primary hover:border-accent-flow/30 transition-all duration-200 active:scale-[0.98] cursor-pointer focus-visible:ring-2 focus-visible:ring-accent-flow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary focus-visible:outline-none"
                   >
                     {habit}
                   </button>

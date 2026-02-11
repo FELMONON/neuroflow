@@ -65,7 +65,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           'transition-all duration-200',
           'active:scale-[0.98]',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-flow focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary',
-          'disabled:opacity-50 disabled:cursor-not-allowed',
+          'disabled:opacity-40 disabled:pointer-events-none',
           'cursor-pointer',
           variantStyles[variant],
           sizeStyles[size],

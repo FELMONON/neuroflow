@@ -187,7 +187,7 @@ export function EveningReflection({ onSubmit, className }: EveningReflectionProp
                 setStruggles(['']);
                 setTomorrow('');
               }}
-              className="text-sm text-text-muted hover:text-text-secondary transition-colors cursor-pointer w-fit"
+              className="text-sm text-text-muted hover:text-text-secondary transition-colors cursor-pointer w-fit rounded-lg px-1 py-0.5 focus-visible:ring-2 focus-visible:ring-accent-flow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary focus-visible:outline-none"
             >
               Reflect again
             </button>

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { Brain, Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Brain, Lock, Eye, EyeOff, CheckCircle, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -42,8 +42,15 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [sessionReady, setSessionReady] = useState<boolean | null>(null);
 
   const supabase = createClient();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSessionReady(!!session);
+    });
+  }, [supabase]);
 
   const passwordStrength = useMemo(
     () => (password.length > 0 ? getPasswordStrength(password) : null),
@@ -72,6 +79,44 @@ export default function ResetPasswordPage() {
     } else {
       setSuccess(true);
     }
+  }
+
+  if (sessionReady === null) {
+    return (
+      <div className="min-h-screen bg-bg-primary landing-noise flex items-center justify-center p-4">
+        <div className="w-full max-w-sm text-center">
+          <div className="bg-bg-secondary rounded-2xl border border-white/[0.06] p-8 shadow-lg shadow-black/20">
+            <div className="w-8 h-8 rounded-lg bg-white/[0.04] animate-shimmer mx-auto mb-4" />
+            <div className="h-4 w-32 rounded bg-white/[0.04] animate-shimmer mx-auto mb-2" />
+            <div className="h-3 w-48 rounded bg-white/[0.04] animate-shimmer mx-auto" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (sessionReady === false) {
+    return (
+      <div className="min-h-screen bg-bg-primary landing-noise flex items-center justify-center p-4">
+        <div className="w-full max-w-sm text-center">
+          <div className="bg-bg-secondary rounded-2xl border border-white/[0.06] p-8 shadow-lg shadow-black/20">
+            <div className="w-12 h-12 rounded-xl bg-accent-sun/10 flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle size={24} className="text-accent-sun" />
+            </div>
+            <h1 className="text-xl font-semibold text-text-primary mb-2">Link expired</h1>
+            <p className="text-sm text-text-secondary mb-6">
+              This reset link has expired or is invalid. Please request a new one.
+            </p>
+            <Link
+              href="/forgot-password"
+              className="text-sm text-accent-flow hover:underline transition-all duration-200"
+            >
+              Request new reset link
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (success) {

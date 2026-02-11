@@ -39,7 +39,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+    }
     const { wins, struggles, tasksCompleted, focusMinutes } = body as {
       wins: string[];
       struggles: string[];
@@ -71,6 +76,39 @@ export async function POST(request: NextRequest) {
     if (struggles.length > 20) {
       return NextResponse.json(
         { error: 'Maximum 20 struggles allowed' },
+        { status: 400 }
+      );
+    }
+
+    // Validate array elements are strings with length limits
+    for (const w of wins) {
+      if (typeof w !== 'string' || w.length > 500) {
+        return NextResponse.json(
+          { error: 'Each win must be a string of 500 characters or less' },
+          { status: 400 }
+        );
+      }
+    }
+
+    for (const s of struggles) {
+      if (typeof s !== 'string' || s.length > 500) {
+        return NextResponse.json(
+          { error: 'Each struggle must be a string of 500 characters or less' },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (tasksCompleted !== undefined && (typeof tasksCompleted !== 'number' || tasksCompleted < 0 || !Number.isFinite(tasksCompleted))) {
+      return NextResponse.json(
+        { error: 'tasksCompleted must be a non-negative number' },
+        { status: 400 }
+      );
+    }
+
+    if (focusMinutes !== undefined && (typeof focusMinutes !== 'number' || focusMinutes < 0 || !Number.isFinite(focusMinutes))) {
+      return NextResponse.json(
+        { error: 'focusMinutes must be a non-negative number' },
         { status: 400 }
       );
     }
@@ -115,8 +153,15 @@ Return ONLY the JSON, no other text.`,
     }
 
     return NextResponse.json(reflection);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('evening-reflection error:', error);
+
+    if (error instanceof Anthropic.APIError) {
+      return NextResponse.json(
+        { error: 'AI service is temporarily unavailable. Please try again later.' },
+        { status: 502 }
+      );
+    }
 
     if (error instanceof SyntaxError) {
       return NextResponse.json(

@@ -41,8 +41,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const { text } = body;
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+    }
+    const { text } = body as Record<string, unknown>;
 
     if (!text || typeof text !== 'string') {
       return NextResponse.json(
@@ -51,7 +56,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (text.length > 1000) {
+    if ((text as string).length > 1000) {
       return NextResponse.json(
         { error: 'text must be 1000 characters or less' },
         { status: 400 }
@@ -66,7 +71,7 @@ export async function POST(request: NextRequest) {
 Respond with JSON: { "type": "task"|"thought"|"reminder", "title": "string or null", "due_date": "YYYY-MM-DD or null", "due_time": "HH:MM or null", "original": "the original text" }
 
 Return ONLY the JSON, no other text.`,
-      messages: [{ role: 'user', content: text }],
+      messages: [{ role: 'user', content: (text as string).trim() }],
     });
 
     const responseText =
@@ -82,11 +87,18 @@ Return ONLY the JSON, no other text.`,
     }
 
     // Ensure the original text is preserved
-    classification.original = text;
+    classification.original = (text as string).trim();
 
     return NextResponse.json(classification);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('classify-capture error:', error);
+
+    if (error instanceof Anthropic.APIError) {
+      return NextResponse.json(
+        { error: 'AI service is temporarily unavailable. Please try again later.' },
+        { status: 502 }
+      );
+    }
 
     if (error instanceof SyntaxError) {
       return NextResponse.json(

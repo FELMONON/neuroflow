@@ -33,8 +33,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const { title, description } = body;
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+    }
+    const { title, description } = body as Record<string, unknown>;
 
     if (!title || typeof title !== 'string') {
       return NextResponse.json(
@@ -43,21 +48,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (title.length > 500) {
+    if ((title as string).length > 500) {
       return NextResponse.json(
         { error: 'title must be 500 characters or less' },
         { status: 400 }
       );
     }
 
-    if (description && (typeof description !== 'string' || description.length > 2000)) {
+    if (description !== undefined && (typeof description !== 'string' || description.length > 2000)) {
       return NextResponse.json(
         { error: 'description must be a string of 2000 characters or less' },
         { status: 400 }
       );
     }
 
-    const userMessage = `Task: ${title}${description ? `\nContext: ${description}` : ''}`;
+    const safeTitle = (title as string).trim();
+    const safeDescription = typeof description === 'string' ? description.trim() : undefined;
+    const userMessage = `Task: ${safeTitle}${safeDescription ? `\nContext: ${safeDescription}` : ''}`;
 
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
@@ -81,8 +88,16 @@ Respond with a JSON array of objects, each with: { "title": string, "estimated_m
     }
 
     return NextResponse.json({ subtasks });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('break-down-task error:', error);
+
+    // Anthropic SDK errors (rate limit, auth, etc.)
+    if (error instanceof Anthropic.APIError) {
+      return NextResponse.json(
+        { error: 'AI service is temporarily unavailable. Please try again later.' },
+        { status: 502 }
+      );
+    }
 
     if (error instanceof SyntaxError) {
       return NextResponse.json(

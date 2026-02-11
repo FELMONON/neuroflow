@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { Pause, Play, Square } from 'lucide-react';
 import { TimerRing } from './TimerRing';
 import { ParkingLot } from './ParkingLot';
@@ -8,6 +8,7 @@ import { SoundscapeSelector } from './SoundscapeSelector';
 import { useSessionStore } from '@/stores/useSessionStore';
 import { useTaskStore } from '@/stores/useTaskStore';
 import { useUIStore } from '@/stores/useUIStore';
+import { useProfileStore } from '@/stores/useProfileStore';
 import { Button } from '@/components/ui';
 
 interface ActiveSessionProps {
@@ -16,17 +17,17 @@ interface ActiveSessionProps {
 
 function ActiveSession({ onComplete }: ActiveSessionProps) {
   const {
-    currentSession, status, timeRemaining,
+    currentSession, status, timeRemaining, parkingLot,
     soundscape, volume,
     pauseSession, resumeSession, setTimeRemaining, extendSession,
-    endSession, setSoundscape, setVolume,
+    endSession, setSoundscape, setVolume, addToParkingLot, removeParkingLotItem,
   } = useSessionStore();
 
   const tasks = useTaskStore((s) => s.tasks);
+  const profileId = useProfileStore((s) => s.profile?.id ?? '');
   const setFocusModeActive = useUIStore((s) => s.setFocusModeActive);
   const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [parkingItems, setParkingItems] = useState<string[]>([]);
 
   const currentTask = currentSession?.task_id
     ? tasks.find((t) => t.id === currentSession.task_id) ?? null
@@ -157,9 +158,19 @@ function ActiveSession({ onComplete }: ActiveSessionProps) {
 
       {/* Parking lot — prominent, always visible */}
       <ParkingLot
-        items={parkingItems}
-        onAdd={(t) => setParkingItems((prev) => [...prev, t])}
-        onRemove={(i) => setParkingItems((prev) => prev.filter((_, idx) => idx !== i))}
+        items={parkingLot.map((item) => item.content)}
+        onAdd={(content) => {
+          addToParkingLot({
+            id: crypto.randomUUID(),
+            user_id: profileId,
+            content,
+            captured_during_session_id: currentSession?.id ?? null,
+            processed: false,
+            converted_to_task_id: null,
+            created_at: new Date().toISOString(),
+          });
+        }}
+        onRemove={(i) => removeParkingLotItem(i)}
       />
     </div>
   );

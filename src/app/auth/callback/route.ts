@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import type { CookieOptions } from '@supabase/ssr';
 
 /**
  * Validate the `next` param to prevent open-redirect attacks.
@@ -24,13 +25,15 @@ function sanitizeRedirectPath(raw: string | null, origin: string): string {
   }
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = sanitizeRedirectPath(searchParams.get('next'), origin);
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || origin;
+  const next = sanitizeRedirectPath(searchParams.get('next'), siteUrl);
 
   if (code) {
-    const response = NextResponse.next({ request });
+    // Collect cookies set during code exchange so we can forward them on the redirect
+    const cookiesToForward: { name: string; value: string; options: CookieOptions }[] = [];
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -38,18 +41,22 @@ export async function GET(request: Request) {
       {
         cookies: {
           getAll() {
-            return request.headers.get('cookie')
-              ?.split('; ')
-              .filter(Boolean)
-              .map((c) => {
-                const idx = c.indexOf('=');
-                if (idx === -1) return { name: c, value: '' };
-                return { name: c.slice(0, idx), value: c.slice(idx + 1) };
-              }) ?? [];
+            return request.cookies.getAll();
           },
           setAll(cookiesToSet) {
             cookiesToSet.forEach(({ name, value, options }) => {
-              response.cookies.set(name, value, options);
+              // Also set on the request so subsequent getAll() calls see updated values
+              request.cookies.set(name, value);
+              cookiesToForward.push({
+                name,
+                value,
+                options: {
+                  ...options,
+                  httpOnly: true,
+                  secure: process.env.NODE_ENV === 'production',
+                  sameSite: 'lax',
+                },
+              });
             });
           },
         },
@@ -59,14 +66,12 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      // Use NEXT_PUBLIC_SITE_URL env var to avoid host header injection.
-      // Falls back to request origin (derived from Host header, not x-forwarded-host).
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || origin;
       const redirectUrl = `${siteUrl}${next}`;
-
       const redirect = NextResponse.redirect(redirectUrl);
-      response.cookies.getAll().forEach((cookie) => {
-        redirect.cookies.set(cookie.name, cookie.value);
+
+      // Forward all auth cookies with proper security options
+      cookiesToForward.forEach(({ name, value, options }) => {
+        redirect.cookies.set(name, value, options);
       });
       return redirect;
     }
@@ -75,5 +80,5 @@ export async function GET(request: Request) {
   }
 
   // Auth code exchange failed — redirect to login with error
-  return NextResponse.redirect(`${origin}/login?error=auth`);
+  return NextResponse.redirect(`${siteUrl}/login?error=auth`);
 }

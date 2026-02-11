@@ -122,6 +122,11 @@ export function QuickCaptureModal() {
       if (e.key === 'Escape') {
         setQuickCaptureOpen(false);
       }
+      // Focus trap: keep focus on the input
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
     },
     [handleSubmit, setQuickCaptureOpen],
   );

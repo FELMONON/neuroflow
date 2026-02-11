@@ -180,7 +180,9 @@ export function Sidebar() {
           {sidebarOpen ? (
             <button
               onClick={() => setToolsExpanded(!toolsExpanded)}
-              className="flex items-center gap-1 w-full px-3 mb-1 text-[10px] uppercase tracking-widest text-white/[0.3] hover:text-white/[0.5] transition-colors cursor-pointer"
+              aria-expanded={showTools}
+              aria-label="Toggle tools section"
+              className="flex items-center gap-1 w-full px-3 mb-1 text-[10px] uppercase tracking-widest text-white/[0.3] hover:text-white/[0.5] transition-colors cursor-pointer rounded-lg focus-visible:ring-2 focus-visible:ring-accent-flow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary focus-visible:outline-none"
             >
               <span>Tools</span>
               <ChevronDown

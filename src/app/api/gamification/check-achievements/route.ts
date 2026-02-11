@@ -249,25 +249,32 @@ export async function POST() {
       })
     );
 
-    // Insert newly achieved ones and accumulate total XP to award
-    let totalXpToAward = 0;
+    // Collect newly achieved achievements
+    const toInsert: { user_id: string; achievement_id: string }[] = [];
     for (const { slug, achieved } of checkResults) {
       if (!achieved) continue;
-
       const definition = ACHIEVEMENTS[slug];
       const achievementId = slugToId[slug];
       if (!definition || !achievementId) continue;
+      toInsert.push({ user_id: userId, achievement_id: achievementId });
+    }
 
+    // Batch insert all newly unlocked achievements
+    let totalXpToAward = 0;
+    if (toInsert.length > 0) {
       const { error: insertError } = await supabase
         .from('user_achievements')
-        .insert({
-          user_id: userId,
-          achievement_id: achievementId,
-        });
+        .insert(toInsert);
 
       if (!insertError) {
-        newlyUnlocked.push({ ...definition, id: achievementId });
-        totalXpToAward += definition.xp_reward;
+        for (const row of toInsert) {
+          const slug = idToSlug[row.achievement_id];
+          const definition = ACHIEVEMENTS[slug];
+          if (definition) {
+            newlyUnlocked.push({ ...definition, id: row.achievement_id });
+            totalXpToAward += definition.xp_reward;
+          }
+        }
       }
     }
 

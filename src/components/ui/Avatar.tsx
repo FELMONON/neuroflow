@@ -39,6 +39,8 @@ function Avatar({
 
   return (
     <div
+      role="img"
+      aria-label={alt ?? name ?? 'User avatar'}
       className={clsx(
         'rounded-full overflow-hidden flex items-center justify-center shrink-0',
         'bg-bg-tertiary text-text-secondary font-medium',

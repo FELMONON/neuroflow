@@ -75,7 +75,8 @@ export function EnergyCheckIn() {
           {selected && (
             <button
               onClick={() => setDismissed(true)}
-              className="text-xs text-text-muted hover:text-text-secondary transition-colors cursor-pointer"
+              aria-label="Dismiss energy check-in"
+              className="text-xs text-text-muted hover:text-text-secondary transition-colors cursor-pointer rounded-lg px-1 py-0.5 focus-visible:ring-2 focus-visible:ring-accent-flow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary focus-visible:outline-none"
             >
               Dismiss
             </button>

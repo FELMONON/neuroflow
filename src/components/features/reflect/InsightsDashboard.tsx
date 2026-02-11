@@ -40,12 +40,12 @@ function LineChart({ data, label }: { data: number[]; label: string }) {
         <span className="text-xs text-text-muted font-mono tabular-nums">avg: {avg}/5</span>
       </div>
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full" preserveAspectRatio="none" role="img" aria-label={`${label} trend chart, average ${avg} out of 5`}>
-        <path d={linePath} fill="none" stroke="var(--accent-flow)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={linePath} fill="none" stroke="var(--color-accent-flow)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         {points.map((p, i) => (
-          <circle key={i} cx={p.x} cy={p.y} r="3" fill="var(--accent-flow)" />
+          <circle key={i} cx={p.x} cy={p.y} r="3" fill="var(--color-accent-flow)" />
         ))}
         {points.map((p, i) => (
-          <text key={`l-${i}`} x={p.x} y={height - 4} textAnchor="middle" fill="var(--text-muted)" fontSize="9">
+          <text key={`l-${i}`} x={p.x} y={height - 4} textAnchor="middle" fill="var(--color-text-muted)" fontSize="9">
             {DAY_LABELS[i]}
           </text>
         ))}

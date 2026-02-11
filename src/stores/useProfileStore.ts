@@ -1,5 +1,13 @@
 import { create } from 'zustand';
+import { createClient } from '@/lib/supabase/client';
 import type { Profile, CheckIn } from '@/types/database';
+
+// Lazy singleton — created once on first mutation that needs Supabase
+let _supabase: ReturnType<typeof createClient> | null = null;
+function getSupabase() {
+  if (!_supabase) _supabase = createClient();
+  return _supabase;
+}
 
 interface ProfileState {
   profile: Profile | null;
@@ -25,45 +33,61 @@ const LEVEL_NAMES = [
   'Deep Roots', 'Canopy', 'Ancient', 'Legendary', 'Ancient Forest',
 ];
 
+function syncProfileToSupabase(profileId: string, updates: Partial<Profile>) {
+  const supabase = getSupabase();
+  supabase
+    .from('profiles')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', profileId)
+    .then(({ error }) => {
+      if (error) console.error('[useProfileStore] sync error:', error.message);
+    });
+}
+
 export const useProfileStore = create<ProfileState>((set, get) => ({
   profile: null,
   latestCheckIn: null,
   isAuthenticated: false,
 
   setProfile: (profile) => set({ profile, isAuthenticated: !!profile }),
-  updateProfile: (updates) =>
-    set((state) => ({
-      profile: state.profile ? { ...state.profile, ...updates } : null,
-    })),
 
-  addXP: (amount) =>
-    set((state) => {
-      if (!state.profile) return {};
-      const newXP = state.profile.xp_total + amount;
-      let newLevel = state.profile.level;
-      while (newLevel < LEVEL_THRESHOLDS.length - 1 && newXP >= LEVEL_THRESHOLDS[newLevel]) {
-        newLevel++;
-      }
-      return { profile: { ...state.profile, xp_total: newXP, level: newLevel } };
-    }),
+  updateProfile: (updates) => {
+    const prev = get().profile;
+    if (!prev) return;
+    set({ profile: { ...prev, ...updates } });
+    syncProfileToSupabase(prev.id, updates);
+  },
 
-  incrementStreak: () =>
-    set((state) => {
-      if (!state.profile) return {};
-      const newStreak = state.profile.streak_current + 1;
-      return {
-        profile: {
-          ...state.profile,
-          streak_current: newStreak,
-          streak_best: Math.max(newStreak, state.profile.streak_best),
-        },
-      };
-    }),
+  addXP: (amount) => {
+    const prev = get().profile;
+    if (!prev) return;
+    const newXP = prev.xp_total + amount;
+    let newLevel = prev.level;
+    while (newLevel < LEVEL_THRESHOLDS.length - 1 && newXP >= LEVEL_THRESHOLDS[newLevel]) {
+      newLevel++;
+    }
+    set({ profile: { ...prev, xp_total: newXP, level: newLevel } });
+    syncProfileToSupabase(prev.id, { xp_total: newXP, level: newLevel });
+  },
 
-  resetStreak: () =>
-    set((state) => ({
-      profile: state.profile ? { ...state.profile, streak_current: 0 } : null,
-    })),
+  incrementStreak: () => {
+    const prev = get().profile;
+    if (!prev) return;
+    const newStreak = prev.streak_current + 1;
+    const updates = {
+      streak_current: newStreak,
+      streak_best: Math.max(newStreak, prev.streak_best),
+    };
+    set({ profile: { ...prev, ...updates } });
+    syncProfileToSupabase(prev.id, updates);
+  },
+
+  resetStreak: () => {
+    const prev = get().profile;
+    if (!prev) return;
+    set({ profile: { ...prev, streak_current: 0 } });
+    syncProfileToSupabase(prev.id, { streak_current: 0 });
+  },
 
   setLatestCheckIn: (checkIn) => set({ latestCheckIn: checkIn }),
   setAuthenticated: (auth) => set({ isAuthenticated: auth }),

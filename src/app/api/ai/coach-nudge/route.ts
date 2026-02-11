@@ -34,7 +34,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+    }
     const {
       lastActivity,
       currentMood,
@@ -66,6 +71,20 @@ export async function POST(request: NextRequest) {
     if (currentEnergy !== undefined && (typeof currentEnergy !== 'number' || currentEnergy < 1 || currentEnergy > 5)) {
       return NextResponse.json(
         { error: 'currentEnergy must be a number between 1 and 5' },
+        { status: 400 }
+      );
+    }
+
+    if (tasksCompleted !== undefined && (typeof tasksCompleted !== 'number' || tasksCompleted < 0 || !Number.isFinite(tasksCompleted))) {
+      return NextResponse.json(
+        { error: 'tasksCompleted must be a non-negative number' },
+        { status: 400 }
+      );
+    }
+
+    if (tasksRemaining !== undefined && (typeof tasksRemaining !== 'number' || tasksRemaining < 0 || !Number.isFinite(tasksRemaining))) {
+      return NextResponse.json(
+        { error: 'tasksRemaining must be a non-negative number' },
         { status: 400 }
       );
     }
@@ -115,8 +134,15 @@ Return ONLY the JSON, no other text.`,
     }
 
     return NextResponse.json(nudge);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('coach-nudge error:', error);
+
+    if (error instanceof Anthropic.APIError) {
+      return NextResponse.json(
+        { error: 'AI service is temporarily unavailable. Please try again later.' },
+        { status: 502 }
+      );
+    }
 
     if (error instanceof SyntaxError) {
       return NextResponse.json(

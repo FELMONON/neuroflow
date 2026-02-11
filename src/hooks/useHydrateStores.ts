@@ -4,6 +4,7 @@ import { useTaskStore } from '@/stores/useTaskStore';
 import { useHabitStore } from '@/stores/useHabitStore';
 import { useDailyPlanStore } from '@/stores/useDailyPlanStore';
 import { useProfileStore } from '@/stores/useProfileStore';
+import type { Task, CheckIn } from '@/types/database';
 
 /**
  * Hydrates all stores from Supabase on mount.
@@ -37,6 +38,10 @@ export function useHydrateStores() {
       const planStore = useDailyPlanStore.getState();
       const profileStore = useProfileStore.getState();
 
+      // Set today's date for the daily plan store
+      const today = new Date().toISOString().split('T')[0];
+      planStore.setCurrentDate(today);
+
       // Task store: fetch from Supabase
       const taskHydration = supabase
         .from('tasks')
@@ -44,9 +49,13 @@ export function useHydrateStores() {
         .eq('user_id', user.id)
         .not('status', 'eq', 'archived')
         .order('sort_order')
-        .then(({ data }) => {
+        .then(({ data, error }) => {
+          if (error) {
+            console.error('[useHydrateStores] task fetch error:', error.message);
+            return;
+          }
           if (data) {
-            taskStore.setTasks(data);
+            taskStore.setTasks(data as Task[]);
           }
         });
 
@@ -57,9 +66,13 @@ export function useHydrateStores() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(1)
-        .then(({ data }) => {
+        .then(({ data, error }) => {
+          if (error) {
+            console.error('[useHydrateStores] check-in fetch error:', error.message);
+            return;
+          }
           if (data && data.length > 0) {
-            profileStore.setLatestCheckIn(data[0]);
+            profileStore.setLatestCheckIn(data[0] as CheckIn);
           }
         });
 
@@ -83,6 +96,11 @@ export function useHydrateStores() {
         });
       } else if (!session) {
         hydrated.current = null;
+        // Clear store data on logout
+        useTaskStore.getState().setTasks([]);
+        useHabitStore.getState().setHabits([]);
+        useDailyPlanStore.getState().setBlocks([]);
+        useProfileStore.getState().setProfile(null);
       }
     });
 

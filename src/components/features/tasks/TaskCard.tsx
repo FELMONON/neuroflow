@@ -74,6 +74,7 @@ export function TaskCard({ task, onToggleComplete, onBreakDown, onEdit }: TaskCa
           onClick={() => onToggleComplete(task.id)}
           className={clsx(
             'mt-0.5 w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-all duration-200 active:scale-[0.98] cursor-pointer',
+            'focus-visible:ring-2 focus-visible:ring-accent-flow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary focus-visible:outline-none',
             isCompleted
               ? 'bg-accent-grow border-accent-grow'
               : 'border-text-muted hover:border-accent-flow',
@@ -99,6 +100,7 @@ export function TaskCard({ task, onToggleComplete, onBreakDown, onEdit }: TaskCa
             <button
               onClick={() => setExpanded(!expanded)}
               aria-expanded={expanded}
+              aria-label={`${expanded ? 'Collapse' : 'Expand'} task: ${task.title}`}
               className="flex-1 text-left cursor-pointer transition-all duration-200 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-accent-flow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary focus-visible:outline-none rounded-lg"
             >
               <span className={clsx(

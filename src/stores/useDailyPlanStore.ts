@@ -238,15 +238,22 @@ export const useDailyPlanStore = create<DailyPlanState>((set, get) => ({
       if (!user) { set({ isLoading: false }); return; }
 
       const today = new Date().toISOString().split('T')[0];
-      const { data } = await supabase
+      set({ currentDate: today });
+
+      const { data, error } = await supabase
         .from('daily_plans')
         .select('*')
         .eq('user_id', user.id)
         .eq('plan_date', today)
         .single();
 
-      if (data && data.time_blocks && data.time_blocks.length > 0) {
-        const blocks: PlanTimeBlock[] = (data.time_blocks as TimeBlock[]).map((b, i) => ({
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 = no rows found, which is expected for a new day
+        console.error('[useDailyPlanStore] fetch error:', error.message);
+      }
+
+      if (data && Array.isArray(data.time_blocks) && data.time_blocks.length > 0) {
+        const blocks: PlanTimeBlock[] = (data.time_blocks as TimeBlock[]).map((b: TimeBlock, i: number) => ({
           ...b,
           id: `db-${i}`,
           isBreak: b.energy === 'recharge',
