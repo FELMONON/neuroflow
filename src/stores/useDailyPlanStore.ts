@@ -9,11 +9,6 @@ function getSupabase() {
   return _supabase;
 }
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-function isPersistedId(id: string): boolean {
-  return UUID_RE.test(id);
-}
-
 // Time helpers
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(':').map(Number);

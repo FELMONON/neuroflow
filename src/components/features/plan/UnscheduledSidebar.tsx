@@ -2,7 +2,7 @@
 
 import { Inbox, ArrowRight, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card, Button, EmptyState } from '@/components/ui';
+import { Card, EmptyState } from '@/components/ui';
 import type { EnergyLevel } from '@/types/database';
 import clsx from 'clsx';
 

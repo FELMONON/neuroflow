@@ -60,8 +60,11 @@ export function TaskForm({ open, onClose, onSubmit, initialTask, mode = 'create'
 
   useEffect(() => {
     if (open) {
-      setTitleTouched(false);
-      setTimeout(() => titleRef.current?.focus(), 100);
+      const id = requestAnimationFrame(() => {
+        setTitleTouched(false);
+        setTimeout(() => titleRef.current?.focus(), 100);
+      });
+      return () => cancelAnimationFrame(id);
     }
   }, [open]);
 

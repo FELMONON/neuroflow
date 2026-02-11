@@ -16,10 +16,11 @@ function XPPop({ amount, trigger }: XPPopProps) {
   useEffect(() => {
     // Detect rising edge only
     if (trigger && !prevTriggerRef.current) {
-      setVisible(true);
-      // Timer lives in a ref so it won't be killed by effect cleanup
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => setVisible(false), 1100);
+      requestAnimationFrame(() => {
+        setVisible(true);
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => setVisible(false), 1100);
+      });
     }
     prevTriggerRef.current = trigger;
   }, [trigger]);

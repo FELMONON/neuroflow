@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Flame } from 'lucide-react';
 
 function getGreeting() {
@@ -23,7 +23,13 @@ interface GreetingHeaderProps {
 export function GreetingHeader({ streak }: GreetingHeaderProps) {
   // SSR-safe: render static text first, hydrate time-dependent values after mount
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      requestAnimationFrame(() => setMounted(true));
+    }
+  }, []);
 
   const greeting = mounted ? getGreeting() : 'Welcome back';
   const dateStr = mounted ? getDateStr() : '\u00A0'; // non-breaking space preserves layout

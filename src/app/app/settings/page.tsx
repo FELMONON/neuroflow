@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Save } from 'lucide-react';
 import { Button, showToast } from '@/components/ui';
@@ -51,26 +51,36 @@ export default function SettingsPage() {
   const [error, setError] = useState('');
 
   const supabase = useMemo(() => createClient(), []);
+  const prevProfileIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!profile) return;
-    setName(profile.display_name ?? '');
-    setTimezone(profile.timezone ?? 'America/New_York');
-    setSubtype(SUBTYPE_LABEL_MAP[profile.adhd_subtype ?? 'combined'] ?? 'Combined');
-    if (profile.energy_pattern) {
-      setPeakStart(profile.energy_pattern.peak_start ?? '09:00');
-      setPeakEnd(profile.energy_pattern.peak_end ?? '12:00');
-      setDipStart(profile.energy_pattern.dip_start ?? '14:00');
-      setDipEnd(profile.energy_pattern.dip_end ?? '16:00');
-    }
-    setWorkDuration(profile.preferred_work_duration ?? 25);
-    setBreakDuration(profile.preferred_break_duration ?? 5);
-    const settings = (profile.settings ?? {}) as Record<string, unknown>;
-    setMorningReminder(settings.morning_reminder !== false);
-    setFocusReminder(settings.focus_reminder === true);
-    setEveningReminder(settings.evening_reminder !== false);
-    setReducedMotion(settings.reduced_motion === true);
-    setFontSize((settings.font_size as string) ?? 'Medium');
+    // Only sync from profile when the profile identity changes (initial load or user switch)
+    if (prevProfileIdRef.current === profile.id) return;
+    prevProfileIdRef.current = profile.id;
+
+    const syncState = () => {
+      setName(profile.display_name ?? '');
+      setTimezone(profile.timezone ?? 'America/New_York');
+      setSubtype(SUBTYPE_LABEL_MAP[profile.adhd_subtype ?? 'combined'] ?? 'Combined');
+      if (profile.energy_pattern) {
+        setPeakStart(profile.energy_pattern.peak_start ?? '09:00');
+        setPeakEnd(profile.energy_pattern.peak_end ?? '12:00');
+        setDipStart(profile.energy_pattern.dip_start ?? '14:00');
+        setDipEnd(profile.energy_pattern.dip_end ?? '16:00');
+      }
+      setWorkDuration(profile.preferred_work_duration ?? 25);
+      setBreakDuration(profile.preferred_break_duration ?? 5);
+      const settings = (profile.settings ?? {}) as Record<string, unknown>;
+      setMorningReminder(settings.morning_reminder !== false);
+      setFocusReminder(settings.focus_reminder === true);
+      setEveningReminder(settings.evening_reminder !== false);
+      setReducedMotion(settings.reduced_motion === true);
+      setFontSize((settings.font_size as string) ?? 'Medium');
+    };
+    // Defer to next microtask to avoid synchronous setState in effect
+    const id = requestAnimationFrame(syncState);
+    return () => cancelAnimationFrame(id);
   }, [profile]);
 
   const handleSave = useCallback(async () => {

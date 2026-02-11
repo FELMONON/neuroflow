@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Users, Timer, Code, BookOpen, Palette, Coffee, Headphones } from 'lucide-react';
 import { Card, Button } from '@/components/ui';
@@ -94,6 +94,12 @@ export function RoomCard({ room, isJoined, profileId, onJoin, onLeave }: RoomCar
   const RoomIcon = ROOM_ICONS[room.icon] ?? Code;
   const isFull = room.participants.length >= room.maxParticipants;
 
+  // Pre-compute stable random delays keyed by participant id
+  const participantDelays = useMemo(
+    () => new Map(room.participants.map((p, i) => [p.id, ((i * 7 + 3) % 20) / 10])),
+    [room.participants],
+  );
+
   return (
     <Card className={clsx(isJoined && 'border-accent-flow/30 bg-accent-flow/[0.03]')}>
       <div className="flex flex-col gap-3">
@@ -129,7 +135,7 @@ export function RoomCard({ room, isJoined, profileId, onJoin, onLeave }: RoomCar
                     : 'bg-white/[0.04] text-text-secondary',
                 )}
               >
-                <PresenceDot delay={Math.random() * 2} />
+                <PresenceDot delay={participantDelays.get(p.id) ?? 0} />
                 <span className="font-medium">{p.name}</span>
                 <span className="text-text-muted hidden sm:inline">- {p.task}</span>
               </div>

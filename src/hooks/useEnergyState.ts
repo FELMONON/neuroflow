@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react';
 import { useProfileStore } from '@/stores/useProfileStore';
 
 /**
@@ -11,14 +12,24 @@ export function useEnergyState() {
   const currentMood = latestCheckIn?.mood ?? null;
   const lastCheckInTime = latestCheckIn?.created_at ?? null;
 
-  // Check-in is "needed" if no check-in today or last one was 4+ hours ago
-  const needsCheckIn = (() => {
-    if (!lastCheckInTime) return true;
-    const lastTime = new Date(lastCheckInTime).getTime();
-    const now = Date.now();
-    const fourHours = 4 * 60 * 60 * 1000;
-    return now - lastTime > fourHours;
-  })();
+  // Check-in is "needed" if no check-in today or last one was 4+ hours ago.
+  // Computed in an effect to avoid calling Date.now() during render.
+  const [needsCheckIn, setNeedsCheckIn] = useState(true);
+  const lastCheckInTimeRef = useRef(lastCheckInTime);
+
+  useEffect(() => {
+    lastCheckInTimeRef.current = lastCheckInTime;
+    const id = requestAnimationFrame(() => {
+      if (!lastCheckInTime) {
+        setNeedsCheckIn(true);
+        return;
+      }
+      const lastTime = new Date(lastCheckInTime).getTime();
+      const fourHours = 4 * 60 * 60 * 1000;
+      setNeedsCheckIn(Date.now() - lastTime > fourHours);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [lastCheckInTime]);
 
   return {
     currentEnergy,

@@ -65,7 +65,7 @@ export default function TasksPage() {
   const handleToggleComplete = useCallback((id: string) => {
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
-    task.status === 'done' ? updateTask(id, { status: 'today', completed_at: null }) : completeTask(id);
+    if (task.status === 'done') { updateTask(id, { status: 'today', completed_at: null }); } else { completeTask(id); }
   }, [tasks, updateTask, completeTask]);
 
   const handleAddTask = useCallback((taskData: Partial<Task>) => {

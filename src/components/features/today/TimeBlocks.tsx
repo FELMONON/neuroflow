@@ -57,11 +57,11 @@ export function TimeBlocks({ blocks }: TimeBlocksProps) {
   const [currentMinutes, setCurrentMinutes] = useState<number | null>(null);
 
   useEffect(() => {
-    setCurrentMinutes(getCurrentMinutes());
+    const frameId = requestAnimationFrame(() => setCurrentMinutes(getCurrentMinutes()));
     const interval = setInterval(() => {
       setCurrentMinutes(getCurrentMinutes());
     }, 60000);
-    return () => clearInterval(interval);
+    return () => { cancelAnimationFrame(frameId); clearInterval(interval); };
   }, []);
 
   const { timelineStart, timelineEnd } = useMemo(() => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Plus, Repeat } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
@@ -41,6 +41,7 @@ const routineOrder: RoutineType[] = ['morning', 'evening', 'anytime'];
 export default function HabitsPage() {
   const [showForm, setShowForm] = useState(false);
   const [currentHour, setCurrentHour] = useState<number | null>(null);
+  const currentHourRef = useRef(currentHour);
   const reducedMotion = useReducedMotion();
 
   const storeHabits = useHabitStore((s) => s.habits);
@@ -61,7 +62,16 @@ export default function HabitsPage() {
       }));
   }, [storeHabits, storeCompletions]);
 
-  useEffect(() => { setCurrentHour(new Date().getHours()); }, []);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      const hour = new Date().getHours();
+      if (hour !== currentHourRef.current) {
+        currentHourRef.current = hour;
+        setCurrentHour(hour);
+      }
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   const handleToggle = useCallback((id: string) => { toggleHabit(id); }, [toggleHabit]);
 
