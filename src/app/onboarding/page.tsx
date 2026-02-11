@@ -83,10 +83,11 @@ export default function OnboardingPage() {
         return;
       }
 
-      // Save onboarding data to profile
+      // Save onboarding data to profile (upsert in case row doesn't exist yet)
       await supabase
         .from('profiles')
-        .update({
+        .upsert({
+          id: user.id,
           display_name: data.name.trim(),
           adhd_subtype: data.adhdSubtype,
           energy_pattern: {
@@ -101,8 +102,7 @@ export default function OnboardingPage() {
             challenges: data.challenges,
             existing_systems: data.existingSystems,
           },
-        })
-        .eq('id', user.id);
+        }, { onConflict: 'id' });
 
       // Save the first task if the user entered one
       if (taskTitle.trim()) {

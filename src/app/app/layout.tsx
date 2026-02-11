@@ -12,13 +12,23 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   // Fetch profile from Supabase for store hydration
-  const { data } = await supabase
+  const { data, error: profileError } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .single();
 
-  const profile = data as Profile | null;
+  let profile = data as Profile | null;
+
+  // If no profile row exists, create one so onboarding can update it
+  if (!profile && profileError?.code === 'PGRST116') {
+    const { data: newProfile } = await supabase
+      .from('profiles')
+      .upsert({ id: user.id, onboarding_completed: false }, { onConflict: 'id' })
+      .select()
+      .single();
+    profile = newProfile as Profile | null;
+  }
 
   // Redirect to onboarding if user hasn't completed it
   if (!profile?.onboarding_completed) {
