@@ -16,12 +16,14 @@ export function useHydrateStores() {
   const hydrated = useRef<string | null>(null);
 
   useEffect(() => {
+    const supabase = createClient();
+
     async function hydrate() {
-      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
-        // Not authenticated — stores stay empty, pages show empty states
+        // Not authenticated — clear hydration ref so a new login triggers re-hydration
+        hydrated.current = null;
         return;
       }
 
@@ -72,5 +74,20 @@ export function useHydrateStores() {
     hydrate().catch((err) => {
       console.error('[useHydrateStores] hydration failed:', err);
     });
+
+    // Re-hydrate when auth state changes (login/logout/user switch)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user && session.user.id !== hydrated.current) {
+        hydrate().catch((err) => {
+          console.error('[useHydrateStores] re-hydration failed:', err);
+        });
+      } else if (!session) {
+        hydrated.current = null;
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 }

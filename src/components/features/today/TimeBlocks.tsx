@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Calendar } from 'lucide-react';
 import { EmptyState } from '@/components/ui';
@@ -52,6 +53,7 @@ function formatTimeLabel(time: string): string {
 
 export function TimeBlocks({ blocks }: TimeBlocksProps) {
   const reducedMotion = useReducedMotion();
+  const router = useRouter();
   const [currentMinutes, setCurrentMinutes] = useState<number | null>(null);
 
   useEffect(() => {
@@ -81,7 +83,7 @@ export function TimeBlocks({ blocks }: TimeBlocksProps) {
           icon={<Calendar />}
           title="No time blocks yet"
           description="Plan your day with time blocks to match your energy levels."
-          action={{ label: 'Go to Plan', onClick: () => window.location.href = '/app/plan' }}
+          action={{ label: 'Go to Plan', onClick: () => router.push('/app/plan') }}
         />
       </div>
     );

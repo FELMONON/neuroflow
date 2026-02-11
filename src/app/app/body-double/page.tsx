@@ -10,6 +10,7 @@ import clsx from 'clsx';
 
 interface Participant {
   id: string;
+  userId: string;
   name: string;
   task: string;
   joinedMinutesAgo: number;
@@ -119,38 +120,65 @@ export default function BodyDoublePage() {
 
   // Load rooms from Supabase
   useEffect(() => {
-    const supabase = createClient();
-    supabase
-      .from('body_double_rooms')
-      .select('*, room_participants(*)')
-      .eq('is_active', true)
-      .then(({ data }) => {
-        if (data) {
-          setRooms(data.map((r: Record<string, unknown>) => ({
-            id: r.id as string,
-            title: r.title as string,
-            description: (r.current_focus as string) ?? 'An open room for focused work.',
-            participants: ((r.room_participants as Record<string, unknown>[]) ?? [])
-              .filter((p) => !p.left_at)
-              .map((p) => ({
-                id: p.id as string,
-                name: p.user_id === profileId ? 'You' : `User ${(p.id as string).slice(0, 4)}`,
-                task: (p.current_task as string) ?? 'Focusing',
-                joinedMinutesAgo: Math.floor((Date.now() - new Date(p.joined_at as string).getTime()) / 60000),
-              })),
-            maxParticipants: (r.max_participants as number) ?? 6,
-            focus: (r.current_focus as string) ?? '',
-            icon: 'code',
-            timerMinutes: 25,
-            timerStartedAt: r.started_at ? new Date(r.started_at as string).getTime() : null,
-          })));
+    async function loadRooms() {
+      try {
+        const supabase = createClient();
+
+        // Fetch rooms and participants separately to avoid Supabase relation inference issues
+        const { data: roomData, error: roomError } = await supabase
+          .from('body_double_rooms')
+          .select('*')
+          .eq('is_active', true);
+
+        if (roomError || !roomData) {
+          console.error('[BodyDouble] Failed to load rooms:', roomError);
+          return;
         }
-      });
+
+        const roomIds = roomData.map((r) => r.id);
+        let participants: { id: string; room_id: string; user_id: string; current_task: string | null; joined_at: string; left_at: string | null }[] = [];
+
+        if (roomIds.length > 0) {
+          const { data: partData, error: partError } = await supabase
+            .from('room_participants')
+            .select('id, room_id, user_id, current_task, joined_at, left_at')
+            .in('room_id', roomIds)
+            .is('left_at', null);
+
+          if (!partError && partData) {
+            participants = partData;
+          }
+        }
+
+        setRooms(roomData.map((r) => ({
+          id: r.id,
+          title: r.title,
+          description: r.current_focus ?? 'An open room for focused work.',
+          participants: participants
+            .filter((p) => p.room_id === r.id)
+            .map((p) => ({
+              id: p.id,
+              userId: p.user_id,
+              name: p.user_id === profileId ? 'You' : `User ${p.id.slice(0, 4)}`,
+              task: p.current_task ?? 'Focusing',
+              joinedMinutesAgo: Math.floor((Date.now() - new Date(p.joined_at).getTime()) / 60000),
+            })),
+          maxParticipants: r.max_participants ?? 6,
+          focus: r.current_focus ?? '',
+          icon: 'code',
+          timerMinutes: 25,
+          timerStartedAt: r.started_at ? new Date(r.started_at).getTime() : null,
+        })));
+      } catch (err) {
+        console.error('[BodyDouble] Failed to load rooms:', err);
+      }
+    }
+    loadRooms();
   }, [profileId]);
 
   const totalFocusing = rooms.reduce((sum, r) => sum + r.participants.length, 0);
 
-  const handleCreate = useCallback(() => {
+  const handleCreate = useCallback(async () => {
     if (!newRoom.title.trim() || !profileId) return;
     const id = crypto.randomUUID();
     const room: Room = {
@@ -168,9 +196,9 @@ export default function BodyDoublePage() {
     setNewRoom({ title: '', description: '', icon: 'code', maxParticipants: '6' });
     setShowCreate(false);
 
-    // Persist to Supabase
+    // Persist to Supabase — rollback on failure
     const supabase = createClient();
-    supabase
+    const { error } = await supabase
       .from('body_double_rooms')
       .insert({
         id,
@@ -181,13 +209,14 @@ export default function BodyDoublePage() {
         current_focus: room.description,
         is_active: true,
         started_at: new Date().toISOString(),
-      })
-      .then(({ error }) => {
-        if (error) console.error('[BodyDouble] Failed to create room:', error);
       });
+    if (error) {
+      console.error('[BodyDouble] Failed to create room:', error);
+      setRooms((prev) => prev.filter((r) => r.id !== id));
+    }
   }, [newRoom, profileId]);
 
-  const handleJoin = useCallback((roomId: string) => {
+  const handleJoin = useCallback(async (roomId: string) => {
     if (!profileId) return;
     setJoinedRoom(roomId);
     const participantId = crypto.randomUUID();
@@ -198,16 +227,16 @@ export default function BodyDoublePage() {
               ...r,
               participants: [
                 ...r.participants,
-                { id: participantId, name: displayName, task: 'Getting started', joinedMinutesAgo: 0 },
+                { id: participantId, userId: profileId, name: displayName, task: 'Getting started', joinedMinutesAgo: 0 },
               ],
             }
           : r,
       ),
     );
 
-    // Persist to Supabase
+    // Persist to Supabase — rollback on failure
     const supabase = createClient();
-    supabase
+    const { error } = await supabase
       .from('room_participants')
       .insert({
         id: participantId,
@@ -215,39 +244,56 @@ export default function BodyDoublePage() {
         user_id: profileId,
         current_task: 'Getting started',
         joined_at: new Date().toISOString(),
-      })
-      .then(({ error }) => {
-        if (error) console.error('[BodyDouble] Failed to join room:', error);
       });
+    if (error) {
+      console.error('[BodyDouble] Failed to join room:', error);
+      setJoinedRoom(null);
+      setRooms((prev) =>
+        prev.map((r) =>
+          r.id === roomId
+            ? { ...r, participants: r.participants.filter((p) => p.id !== participantId) }
+            : r,
+        ),
+      );
+    }
   }, [profileId, displayName]);
 
-  const handleLeave = useCallback(() => {
+  const handleLeave = useCallback(async () => {
     if (!profileId || !joinedRoom) return;
-    // Find the participant to remove
+    // Find the participant by userId, not display name
     const room = rooms.find((r) => r.id === joinedRoom);
-    const myParticipant = room?.participants.find((p) => p.name === displayName);
+    const myParticipant = room?.participants.find((p) => p.userId === profileId);
 
+    const previousParticipants = room?.participants ?? [];
     setRooms((prev) =>
       prev.map((r) =>
         r.id === joinedRoom
-          ? { ...r, participants: r.participants.filter((p) => p.name !== displayName) }
+          ? { ...r, participants: r.participants.filter((p) => p.userId !== profileId) }
           : r,
       ),
     );
     setJoinedRoom(null);
 
-    // Persist to Supabase
+    // Persist to Supabase — rollback on failure
     if (myParticipant) {
       const supabase = createClient();
-      supabase
+      const { error } = await supabase
         .from('room_participants')
         .update({ left_at: new Date().toISOString() })
-        .eq('id', myParticipant.id)
-        .then(({ error }) => {
-          if (error) console.error('[BodyDouble] Failed to leave room:', error);
-        });
+        .eq('id', myParticipant.id);
+      if (error) {
+        console.error('[BodyDouble] Failed to leave room:', error);
+        setJoinedRoom(joinedRoom);
+        setRooms((prev) =>
+          prev.map((r) =>
+            r.id === joinedRoom
+              ? { ...r, participants: previousParticipants }
+              : r,
+          ),
+        );
+      }
     }
-  }, [joinedRoom, rooms, profileId, displayName]);
+  }, [joinedRoom, rooms, profileId]);
 
   return (
     <motion.div
@@ -339,7 +385,7 @@ export default function BodyDoublePage() {
                               key={p.id}
                               className={clsx(
                                 'inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs',
-                                p.name === displayName
+                                p.userId === profileId
                                   ? 'bg-accent-flow/10 text-accent-flow border border-accent-flow/20'
                                   : 'bg-white/[0.04] text-text-secondary',
                               )}

@@ -103,11 +103,11 @@ function formatDate(date: Date): string {
   return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 }
 
-function findNextOpenSlot(blocks: TimeBlock[]): string | null {
+function findNextOpenSlot(blocks: TimeBlock[], endOfDay: number = 22 * 60): string | null {
   if (blocks.length === 0) return '08:00';
   const last = blocks[blocks.length - 1];
   const endMin = timeToMinutes(last.end);
-  if (endMin < 17 * 60) return last.end;
+  if (endMin < endOfDay) return last.end;
   return null;
 }
 
@@ -178,14 +178,25 @@ export default function PlanPage() {
     return currentDate.toDateString() === t.toDateString();
   }, [currentDate]);
 
-  const nextSlot = useMemo(() => findNextOpenSlot(blocks), [blocks]);
+  // Derive end-of-day from energy pattern: 4 hours after the dip ends, capped at 22:00
+  // This supports evening workers instead of hardcoding 5 PM
+  const endOfDayMinutes = useMemo(() => {
+    const dipEnd = energyPattern.dip_end;
+    if (dipEnd) {
+      const dipEndMin = timeToMinutes(dipEnd);
+      return Math.min(dipEndMin + 4 * 60, 22 * 60);
+    }
+    return 22 * 60;
+  }, [energyPattern]);
+
+  const nextSlot = useMemo(() => findNextOpenSlot(blocks, endOfDayMinutes), [blocks, endOfDayMinutes]);
 
   // Projected staggered times — each task starts after buffer + previous task
   const projectedSlots = useMemo(() => {
     const map = new Map<string, string>();
     if (!nextSlot) return map;
     let cursor = timeToMinutes(nextSlot);
-    const endOfDay = 17 * 60;
+    const endOfDay = endOfDayMinutes;
     const lastBlock = blocks[blocks.length - 1];
     let needsBuffer = lastBlock ? !lastBlock.isBreak : false;
 

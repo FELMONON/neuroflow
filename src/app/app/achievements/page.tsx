@@ -51,24 +51,37 @@ export default function AchievementsPage() {
   // Load real unlocked achievements from Supabase
   useEffect(() => {
     async function loadAchievements() {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
 
-      // Fetch user achievements and achievement definitions separately
-      const [uaRes, achRes] = await Promise.all([
-        supabase.from('user_achievements').select('achievement_id, unlocked_at').eq('user_id', user.id),
-        supabase.from('achievements').select('id, slug'),
-      ]);
+        // Fetch user achievements and achievement definitions separately
+        const [uaRes, achRes] = await Promise.all([
+          supabase.from('user_achievements').select('achievement_id, unlocked_at').eq('user_id', user.id),
+          supabase.from('achievements').select('id, slug'),
+        ]);
 
-      if (uaRes.data && achRes.data) {
-        const idToSlug = new Map(achRes.data.map((a) => [a.id, a.slug]));
-        const slugMap: Record<string, string> = {};
-        for (const row of uaRes.data) {
-          const slug = idToSlug.get(row.achievement_id);
-          if (slug) slugMap[slug] = row.unlocked_at;
+        if (uaRes.error) {
+          console.error('[Achievements] Failed to load user achievements:', uaRes.error);
+          return;
         }
-        setUnlockedSlugs(slugMap);
+        if (achRes.error) {
+          console.error('[Achievements] Failed to load achievement definitions:', achRes.error);
+          return;
+        }
+
+        if (uaRes.data && achRes.data) {
+          const idToSlug = new Map(achRes.data.map((a) => [a.id, a.slug]));
+          const slugMap: Record<string, string> = {};
+          for (const row of uaRes.data) {
+            const slug = idToSlug.get(row.achievement_id);
+            if (slug) slugMap[slug] = row.unlocked_at;
+          }
+          setUnlockedSlugs(slugMap);
+        }
+      } catch (err) {
+        console.error('[Achievements] Failed to load achievements:', err);
       }
     }
     loadAchievements();

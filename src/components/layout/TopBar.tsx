@@ -88,8 +88,12 @@ export function TopBar() {
   }, [menuOpen, handleClickOutside, handleKeyDown]);
 
   const handleSignOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('[TopBar] Sign out failed:', err);
+    }
     window.location.href = '/login';
   };
 
