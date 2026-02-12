@@ -27,11 +27,11 @@ begin
 
   return query
   with inserted as (
-    insert into public.user_achievements (user_id, achievement_id)
+    insert into public.user_achievements ("user_id", "achievement_id")
     select p_user_id, ids.new_achievement_id
     from unnest(p_achievement_ids) as ids(new_achievement_id)
-    on conflict (user_id, achievement_id) do nothing
-    returning public.user_achievements.achievement_id as inserted_achievement_id
+    on conflict on constraint user_achievements_user_id_achievement_id_key do nothing
+    returning public.user_achievements."achievement_id" as inserted_achievement_id
   ),
   awarded as (
     select
