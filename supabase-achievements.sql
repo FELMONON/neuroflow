@@ -13,6 +13,7 @@ language plpgsql
 security invoker
 set search_path = public
 as $$
+#variable_conflict use_column
 declare
   current_user_id uuid := auth.uid();
 begin
