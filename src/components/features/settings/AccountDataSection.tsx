@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { Download, Trash2, LogOut } from 'lucide-react';
-import { Card, Button, showToast } from '@/components/ui';
+import { Card, Button, Input, showToast } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 import type { Profile } from '@/types/database';
 
@@ -10,8 +10,11 @@ interface AccountDataSectionProps {
   profile: Profile | null;
 }
 
+const DELETE_CONFIRMATION_TEXT = 'DELETE MY ACCOUNT';
+
 export function AccountDataSection({ profile }: AccountDataSectionProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState('');
@@ -25,10 +28,19 @@ export function AccountDataSection({ profile }: AccountDataSectionProps) {
   }, [supabase]);
 
   const handleDeleteAccount = useCallback(async () => {
+    if (deleteConfirmation.trim().toUpperCase() !== DELETE_CONFIRMATION_TEXT) {
+      setError(`Type "${DELETE_CONFIRMATION_TEXT}" to confirm.`);
+      return;
+    }
+
     setDeleting(true);
     setError('');
     try {
-      const res = await fetch('/api/auth/delete-account', { method: 'POST' });
+      const res = await fetch('/api/auth/delete-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmation: deleteConfirmation }),
+      });
       if (res.ok) {
         await supabase.auth.signOut();
         window.location.href = '/login';
@@ -41,7 +53,7 @@ export function AccountDataSection({ profile }: AccountDataSectionProps) {
       setError('Network error. Please check your connection.');
       setDeleting(false);
     }
-  }, [supabase]);
+  }, [deleteConfirmation, supabase]);
 
   const handleExport = useCallback(async () => {
     try {
@@ -107,12 +119,36 @@ export function AccountDataSection({ profile }: AccountDataSectionProps) {
             <div className="p-4 rounded-xl border border-accent-spark/20 bg-accent-spark/5">
               <p className="text-sm text-text-primary mb-1">Are you sure?</p>
               <p className="text-xs text-text-muted mb-3">This will permanently delete your account and all data. This cannot be undone.</p>
+              <p className="text-xs text-text-muted mb-2">
+                Type <span className="font-mono text-text-primary">{DELETE_CONFIRMATION_TEXT}</span> to confirm.
+              </p>
+              <Input
+                value={deleteConfirmation}
+                onChange={(e) => setDeleteConfirmation(e.target.value)}
+                placeholder={DELETE_CONFIRMATION_TEXT}
+                autoComplete="off"
+                className="mb-3"
+              />
               {error && <p className="text-xs text-accent-spark mb-2">{error}</p>}
               <div className="flex gap-2">
-                <Button variant="danger" size="sm" loading={deleting} onClick={handleDeleteAccount}>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  loading={deleting}
+                  disabled={deleteConfirmation.trim().toUpperCase() !== DELETE_CONFIRMATION_TEXT}
+                  onClick={handleDeleteAccount}
+                >
                   Yes, delete my account
                 </Button>
-                <Button variant="secondary" size="sm" onClick={() => { setShowDeleteConfirm(false); setError(''); }}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setDeleteConfirmation('');
+                    setError('');
+                  }}
+                >
                   Cancel
                 </Button>
               </div>

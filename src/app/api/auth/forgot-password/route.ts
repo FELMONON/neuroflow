@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient as createSSRServerClient } from '@supabase/ssr';
 import { checkRateLimit, AUTH_RATE_LIMITS } from '@/lib/rate-limit';
+import { getSiteUrlOrThrow } from '@/lib/site-url';
 
 function getClientIP(request: NextRequest): string {
   return (
@@ -21,8 +22,8 @@ export async function POST(request: NextRequest) {
 
     const ip = getClientIP(request);
 
-    const ipLimit = checkRateLimit(`reset-ip:${ip}`, AUTH_RATE_LIMITS.passwordReset);
-    const emailLimit = checkRateLimit(`reset-email:${email.toLowerCase()}`, AUTH_RATE_LIMITS.passwordReset);
+    const ipLimit = await checkRateLimit(`reset-ip:${ip}`, AUTH_RATE_LIMITS.passwordReset);
+    const emailLimit = await checkRateLimit(`reset-email:${email.toLowerCase()}`, AUTH_RATE_LIMITS.passwordReset);
 
     if (!ipLimit.allowed || !emailLimit.allowed) {
       return NextResponse.json(
@@ -53,8 +54,13 @@ export async function POST(request: NextRequest) {
       },
     );
 
-    // Use env-based site URL to prevent open redirect via spoofed Origin header
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin;
+    let siteUrl: string;
+    try {
+      siteUrl = getSiteUrlOrThrow();
+    } catch (error) {
+      console.error('[forgot-password] Invalid NEXT_PUBLIC_SITE_URL:', error);
+      return NextResponse.json({ error: 'Server configuration error.' }, { status: 500 });
+    }
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${siteUrl}/auth/callback?next=/reset-password`,

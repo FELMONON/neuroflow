@@ -45,10 +45,16 @@ drop function if exists public.handle_new_user() cascade;
 4. Click **"Run"**
 5. Then create a **new query** and paste the ENTIRE contents of the file `supabase-setup.sql` (located in the project root: `neuroflow/supabase-setup.sql`)
 6. Click **"Run"**
+7. Then create another **new query** and paste the ENTIRE contents of `supabase-rate-limit.sql` (located in the project root: `neuroflow/supabase-rate-limit.sql`)
+8. Click **"Run"**
+9. Then create another **new query** and paste the ENTIRE contents of `supabase-achievements.sql` (located in the project root: `neuroflow/supabase-achievements.sql`)
+10. Click **"Run"**
 
 This creates:
 - 10 enums
 - 13 tables (profiles, tasks, focus_sessions, daily_plans, habits, habit_completions, parking_lot, body_double_rooms, room_participants, dopamine_menu, check_ins, achievements, user_achievements)
+- shared rate limit table + RPC function (`check_rate_limit`) for multi-instance-safe API throttling
+- atomic achievement unlock + XP grant RPC (`unlock_achievements_and_award_xp`) to prevent XP race conditions
 - Row Level Security on all tables
 - Auto-profile creation trigger (creates a profile row when a user signs up)
 - 15 seed achievement records
@@ -71,6 +77,8 @@ This creates:
 NEXT_PUBLIC_SUPABASE_URL=https://stgtzqpugodeyjhiwpam.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<paste the anon key here>
 SUPABASE_SERVICE_ROLE_KEY=<paste the service_role key here>
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+RATE_LIMIT_BACKEND=auto
 ANTHROPIC_API_KEY=sk-ant-placeholder
 ```
 

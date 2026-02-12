@@ -201,7 +201,7 @@ export async function POST() {
     }
 
     // Rate limit: 10 checks per minute per user
-    const rl = checkRateLimit(`check-achievements:${user.id}`, { max: 10, windowMs: 60_000 });
+    const rl = await checkRateLimit(`check-achievements:${user.id}`, { max: 10, windowMs: 60_000 });
     if (!rl.allowed) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
@@ -249,48 +249,35 @@ export async function POST() {
       })
     );
 
-    // Collect newly achieved achievements
-    const toInsert: { user_id: string; achievement_id: string }[] = [];
+    // Collect newly achieved candidates
+    const candidateAchievementIds: string[] = [];
     for (const { slug, achieved } of checkResults) {
       if (!achieved) continue;
-      const definition = ACHIEVEMENTS[slug];
       const achievementId = slugToId[slug];
-      if (!definition || !achievementId) continue;
-      toInsert.push({ user_id: userId, achievement_id: achievementId });
+      if (!achievementId) continue;
+      candidateAchievementIds.push(achievementId);
     }
 
-    // Batch insert all newly unlocked achievements
-    let totalXpToAward = 0;
-    if (toInsert.length > 0) {
-      const { error: insertError } = await supabase
-        .from('user_achievements')
-        .insert(toInsert);
+    if (candidateAchievementIds.length > 0) {
+      const { data: unlockedRows, error: unlockError } = await supabase.rpc(
+        'unlock_achievements_and_award_xp',
+        {
+          p_user_id: userId,
+          p_achievement_ids: candidateAchievementIds,
+        },
+      );
 
-      if (!insertError) {
-        for (const row of toInsert) {
-          const slug = idToSlug[row.achievement_id];
-          const definition = ACHIEVEMENTS[slug];
-          if (definition) {
-            newlyUnlocked.push({ ...definition, id: row.achievement_id });
-            totalXpToAward += definition.xp_reward;
-          }
-        }
+      if (unlockError) {
+        console.error('unlock_achievements_and_award_xp error:', unlockError.message);
+        return NextResponse.json({ error: 'Failed to unlock achievements' }, { status: 500 });
       }
-    }
 
-    // Award all achievement XP in a single atomic update (avoid race condition)
-    if (totalXpToAward > 0) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('xp_total')
-        .eq('id', userId)
-        .single();
-
-      if (profile) {
-        await supabase
-          .from('profiles')
-          .update({ xp_total: profile.xp_total + totalXpToAward })
-          .eq('id', userId);
+      for (const row of unlockedRows ?? []) {
+        const slug = idToSlug[row.achievement_id];
+        const definition = ACHIEVEMENTS[slug];
+        if (definition) {
+          newlyUnlocked.push({ ...definition, id: row.achievement_id });
+        }
       }
     }
 

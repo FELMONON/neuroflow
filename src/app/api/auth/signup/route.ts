@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient as createSSRServerClient } from '@supabase/ssr';
 import { checkRateLimit, AUTH_RATE_LIMITS } from '@/lib/rate-limit';
+import { getSiteUrlOrThrow } from '@/lib/site-url';
 
 function getClientIP(request: NextRequest): string {
   return (
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
   try {
     const ip = getClientIP(request);
 
-    const rl = checkRateLimit(`signup:${ip}`, AUTH_RATE_LIMITS.signup);
+    const rl = await checkRateLimit(`signup:${ip}`, AUTH_RATE_LIMITS.signup);
     if (!rl.allowed) {
       return NextResponse.json(
         { error: 'Too many signup attempts. Please try again later.' },
@@ -69,8 +70,13 @@ export async function POST(request: NextRequest) {
       },
     );
 
-    // Use env-based site URL to prevent open redirect via spoofed Origin header
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin;
+    let siteUrl: string;
+    try {
+      siteUrl = getSiteUrlOrThrow();
+    } catch (error) {
+      console.error('[signup] Invalid NEXT_PUBLIC_SITE_URL:', error);
+      return NextResponse.json({ error: 'Server configuration error.' }, { status: 500 });
+    }
 
     const { error } = await supabase.auth.signUp({
       email,

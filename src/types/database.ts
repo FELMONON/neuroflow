@@ -236,7 +236,28 @@ export interface Database {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      check_rate_limit: {
+        Args: {
+          p_key: string;
+          p_max: number;
+          p_window_ms: number;
+        };
+        Returns: {
+          allowed: boolean;
+          remaining: number;
+          retry_after_ms: number;
+        }[];
+      };
+      unlock_achievements_and_award_xp: {
+        Args: {
+          p_user_id: string;
+          p_achievement_ids: string[];
+        };
+        Returns: {
+          achievement_id: string;
+          xp_awarded: number;
+        }[];
+      };
     };
     Enums: {
       [_ in never]: never;

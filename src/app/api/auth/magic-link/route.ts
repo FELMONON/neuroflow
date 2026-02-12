@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient as createSSRServerClient } from '@supabase/ssr';
 import { checkRateLimit, AUTH_RATE_LIMITS } from '@/lib/rate-limit';
+import { getSiteUrlOrThrow } from '@/lib/site-url';
 
 function getClientIP(request: NextRequest): string {
   return (
@@ -22,8 +23,8 @@ export async function POST(request: NextRequest) {
     const ip = getClientIP(request);
 
     // Rate limit by both IP and email
-    const ipLimit = checkRateLimit(`magic-link-ip:${ip}`, AUTH_RATE_LIMITS.magicLink);
-    const emailLimit = checkRateLimit(`magic-link-email:${email.toLowerCase()}`, AUTH_RATE_LIMITS.magicLink);
+    const ipLimit = await checkRateLimit(`magic-link-ip:${ip}`, AUTH_RATE_LIMITS.magicLink);
+    const emailLimit = await checkRateLimit(`magic-link-email:${email.toLowerCase()}`, AUTH_RATE_LIMITS.magicLink);
 
     if (!ipLimit.allowed || !emailLimit.allowed) {
       return NextResponse.json(
@@ -63,8 +64,13 @@ export async function POST(request: NextRequest) {
       },
     );
 
-    // Use env-based site URL to prevent open redirect via spoofed Origin header
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin;
+    let siteUrl: string;
+    try {
+      siteUrl = getSiteUrlOrThrow();
+    } catch (error) {
+      console.error('[magic-link] Invalid NEXT_PUBLIC_SITE_URL:', error);
+      return NextResponse.json({ error: 'Server configuration error.' }, { status: 500 });
+    }
 
     const { error } = await supabase.auth.signInWithOtp({
       email,

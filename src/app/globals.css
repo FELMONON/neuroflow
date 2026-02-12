@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
 :root {
+  --font-inter: "Avenir Next", "Segoe UI", "Helvetica Neue", "Noto Sans", Arial, sans-serif;
+  --font-jetbrains-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  --font-syne: "Syne", "Avenir Next", "Trebuchet MS", "Segoe UI", sans-serif;
+
   --bg-primary: #0B0B0F;
   --bg-secondary: #141419;
   --bg-tertiary: #1C1C25;

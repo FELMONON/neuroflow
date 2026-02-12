@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const rl = checkRateLimit(`ai:${user.id}`, AUTH_RATE_LIMITS.ai);
+    const rl = await checkRateLimit(`ai:${user.id}`, AUTH_RATE_LIMITS.ai);
     if (!rl.allowed) {
       return NextResponse.json(
         { error: 'Too many requests. Please slow down.' },

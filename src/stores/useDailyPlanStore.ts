@@ -42,8 +42,14 @@ async function syncBlocksToSupabase(date: string, blocks: PlanTimeBlock[]) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Strip client-only fields (id, isBreak) before persisting
-    const timeBlocks: TimeBlock[] = blocks.map(({ id: _id, isBreak: _isBreak, ...rest }) => rest);
+    // Persist only DB-supported time block fields.
+    const timeBlocks: TimeBlock[] = blocks.map((block) => ({
+      start: block.start,
+      end: block.end,
+      task_id: block.task_id,
+      label: block.label,
+      energy: block.energy,
+    }));
 
     await supabase
       .from('daily_plans')
