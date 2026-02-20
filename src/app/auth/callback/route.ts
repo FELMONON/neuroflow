@@ -76,6 +76,10 @@ export async function GET(request: NextRequest) {
       return redirect;
     }
 
+    if (error.message.toLowerCase().includes('code verifier')) {
+      return NextResponse.redirect(`${siteUrl}/login?error=pkce`);
+    }
+
     console.error('[auth/callback] Code exchange failed:', error.message);
   }
 

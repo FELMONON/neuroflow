@@ -20,6 +20,16 @@ function validateEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function getAuthErrorMessage(authError: string | null): string {
+  if (authError === 'pkce') {
+    return 'Sign-in expired due to an auth redirect mismatch. Retry from this same URL.';
+  }
+  if (authError) {
+    return 'Something went sideways. Try again?';
+  }
+  return '';
+}
+
 function LoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
@@ -34,6 +44,7 @@ function LoginForm() {
   const [mode, setMode] = useState<'password' | 'magic-link'>('password');
 
   const authError = searchParams.get('error');
+  const authErrorMessage = getAuthErrorMessage(authError);
 
   const supabase = createClient();
 
@@ -186,10 +197,10 @@ function LoginForm() {
             <div className="flex-1 h-px bg-white/[0.08]" />
           </div>
 
-          {(error || authError) && (
+          {(error || authErrorMessage) && (
             <div role="alert" className="mb-4 p-3 rounded-lg bg-accent-spark/10 border border-accent-spark/20">
               <p className="text-sm text-accent-spark">
-                {error || 'Something went sideways. Try again?'}
+                {error || authErrorMessage}
               </p>
             </div>
           )}

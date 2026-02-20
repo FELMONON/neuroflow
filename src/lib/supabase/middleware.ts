@@ -2,6 +2,22 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function updateSession(request: NextRequest) {
+  // Enforce a single canonical host in production to avoid PKCE verifier loss
+  // when auth starts on one domain and returns on another.
+  if (process.env.VERCEL_ENV === 'production' && process.env.NEXT_PUBLIC_SITE_URL) {
+    try {
+      const canonical = new URL(process.env.NEXT_PUBLIC_SITE_URL.trim());
+      if (request.nextUrl.host !== canonical.host) {
+        const url = request.nextUrl.clone();
+        url.protocol = canonical.protocol;
+        url.host = canonical.host;
+        return NextResponse.redirect(url);
+      }
+    } catch {
+      // Ignore malformed site URL here; auth route validation handles strict checks.
+    }
+  }
+
   const { pathname, searchParams } = request.nextUrl;
 
   // If OAuth params land on "/", forward to callback route before rendering landing page.
