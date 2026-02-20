@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Zap, Check } from 'lucide-react';
 import clsx from 'clsx';
 import { createClient } from '@/lib/supabase/client';
+import { showToast } from '@/components/ui/Toast';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { useEnergyState } from '@/hooks/useEnergyState';
 import { useGameLoop } from '@/hooks/useGameLoop';
@@ -31,51 +32,81 @@ const ENERGY_LEVEL_MAP: Record<EnergyLevel, number> = {
   recharge: 1,
 };
 
+function energyNumberToLevel(value: number | null): EnergyLevel | null {
+  if (value === null) return null;
+  if (value >= 4) return 'high';
+  if (value >= 3) return 'medium';
+  if (value >= 2) return 'low';
+  return 'recharge';
+}
+
 export function EnergyCheckIn() {
   const [selected, setSelected] = useState<EnergyLevel | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const [saving, setSaving] = useState(false);
   const setLatestCheckIn = useProfileStore((s) => s.setLatestCheckIn);
-  const { needsCheckIn } = useEnergyState();
+  const { needsCheckIn, currentEnergy } = useEnergyState();
   const { onCheckIn } = useGameLoop();
 
-  const handleSelect = useCallback(async (level: EnergyLevel) => {
-    setSelected(level);
-
-    // Persist to Supabase first, mirroring the Reflect page pattern
-    const supabase = getSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data: checkInRow, error } = await supabase
-      .from('check_ins')
-      .insert({
-        user_id: user.id,
-        mood: null,
-        energy: ENERGY_LEVEL_MAP[level],
-        focus_ability: null,
-        emotions: [],
-        note: null,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('[EnergyCheckIn] persist error:', error.message);
-      return;
+  useEffect(() => {
+    // Hydrate local selection once latest check-in arrives from store hydration.
+    const latestEnergyLevel = energyNumberToLevel(currentEnergy);
+    if (!selected && latestEnergyLevel) {
+      setSelected(latestEnergyLevel);
     }
+  }, [selected, currentEnergy]);
 
-    // Update in-memory store with the persisted record
-    if (checkInRow) setLatestCheckIn(checkInRow as CheckIn);
-    onCheckIn();
-  }, [setLatestCheckIn, onCheckIn]);
+  const handleSelect = useCallback(async (level: EnergyLevel) => {
+    if (saving || !needsCheckIn) return;
+    setSaving(true);
 
-  // Hide if already checked in recently and dismissed
+    try {
+      // Persist to Supabase first, mirroring the Reflect page pattern
+      const supabase = getSupabase();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('not_authenticated');
+
+      const { data: checkInRow, error } = await supabase
+        .from('check_ins')
+        .insert({
+          user_id: user.id,
+          mood: null,
+          energy: ENERGY_LEVEL_MAP[level],
+          focus_ability: null,
+          emotions: [],
+          note: null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Update in-memory store with the persisted record
+      if (checkInRow) {
+        setSelected(level);
+        setLatestCheckIn(checkInRow as CheckIn);
+      }
+      onCheckIn();
+    } catch (error) {
+      const message = error instanceof Error && error.message === 'not_authenticated'
+        ? 'Sign in to save your energy check-in.'
+        : 'Could not save your check-in. Try again.';
+      showToast({ message, variant: 'error' });
+      console.error('[EnergyCheckIn] persist error:', error);
+    } finally {
+      setSaving(false);
+    }
+  }, [saving, needsCheckIn, setLatestCheckIn, onCheckIn]);
+
+  const interactionLocked = saving || !needsCheckIn;
+
+  // Hide if manually dismissed
   if (dismissed) return null;
-  // If already checked in this cycle and user hasn't interacted, still show but pre-selected
+  // If checked in recently but no check-in state is hydrated yet, keep hidden.
   if (!needsCheckIn && !selected) {
-    // Don't show the prompt if they already checked in
     return null;
   }
+  // Keep widget visible once selected so users can confirm and dismiss.
 
   return (
     <AnimatePresence>
@@ -89,10 +120,10 @@ export function EnergyCheckIn() {
           <div className="flex items-center gap-2">
             <Zap size={14} className="text-text-muted" />
             <span className="text-sm font-medium text-text-secondary">
-              {selected ? 'Energy logged' : "How\u2019s your energy right now?"}
+              {saving ? 'Saving energy...' : !needsCheckIn ? 'Energy logged' : "How\u2019s your energy right now?"}
             </span>
           </div>
-          {selected && (
+          {!needsCheckIn && selected && !saving && (
             <button
               onClick={() => setDismissed(true)}
               aria-label="Dismiss energy check-in"
@@ -111,8 +142,10 @@ export function EnergyCheckIn() {
                 key={opt.level}
                 type="button"
                 onClick={() => handleSelect(opt.level)}
+                disabled={interactionLocked}
                 className={clsx(
-                  'flex-1 flex flex-col items-center gap-1 py-2.5 rounded-lg border text-xs font-medium transition-all duration-200 cursor-pointer active:scale-[0.98]',
+                  'flex-1 flex flex-col items-center gap-1 py-2.5 rounded-lg border text-xs font-medium transition-all duration-200 active:scale-[0.98]',
+                  interactionLocked ? 'cursor-not-allowed' : 'cursor-pointer',
                   'focus-visible:ring-2 focus-visible:ring-accent-flow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary focus-visible:outline-none',
                   isSelected
                     ? opt.color
@@ -128,7 +161,7 @@ export function EnergyCheckIn() {
           })}
         </div>
 
-        {selected && (
+        {!needsCheckIn && selected && (
           <motion.p
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
