@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useInView, motion, AnimatePresence } from 'framer-motion';
 import {
   Check,
@@ -21,7 +21,6 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
 
 /* ─────────────────────────────────────────────────────────
    ANIMATION PRIMITIVES
@@ -601,28 +600,6 @@ const proPlanFeatures = [
    ═════════════════════════════════════════════════════════ */
 
 export default function LandingPage() {
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    const code = url.searchParams.get('code');
-    const tokenHash = url.searchParams.get('token_hash');
-
-    // If auth params accidentally land on "/", forward to callback to complete session exchange.
-    if (code || tokenHash) {
-      window.location.replace(`/auth/callback${url.search}`);
-      return;
-    }
-
-    // Keep logged-in users inside the app instead of showing marketing landing.
-    const supabase = createClient();
-    void supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        window.location.replace('/app/today');
-      }
-    }).catch(() => {
-      // Ignore errors here; unauthenticated users should still see the landing page.
-    });
-  }, []);
-
   return (
     <div className="min-h-screen bg-bg-primary font-sans relative">
       {/* Noise texture */}

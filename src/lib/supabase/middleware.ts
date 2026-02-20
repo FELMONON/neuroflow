@@ -2,6 +2,15 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function updateSession(request: NextRequest) {
+  const { pathname, searchParams } = request.nextUrl;
+
+  // If OAuth params land on "/", forward to callback route before rendering landing page.
+  if (pathname === '/' && (searchParams.get('code') || searchParams.get('token_hash'))) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/auth/callback';
+    return NextResponse.redirect(url);
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -29,8 +38,6 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
-
   // /reset-password requires a valid recovery session — allow if user is present
   // (user gets set from the recovery token exchanged at /auth/callback).
   // If no session, redirect to login instead of showing a broken form.
@@ -49,6 +56,13 @@ export async function updateSession(request: NextRequest) {
 
   // Redirect authenticated users away from login/signup (but NOT from /reset-password)
   if ((pathname === '/login' || pathname === '/signup') && user) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/app/today';
+    return NextResponse.redirect(url);
+  }
+
+  // Redirect authenticated users away from landing into app.
+  if (pathname === '/' && user) {
     const url = request.nextUrl.clone();
     url.pathname = '/app/today';
     return NextResponse.redirect(url);
