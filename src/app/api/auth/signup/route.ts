@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient as createSSRServerClient } from '@supabase/ssr';
 import { checkRateLimit, AUTH_RATE_LIMITS } from '@/lib/rate-limit';
-import { getSiteUrlOrThrow } from '@/lib/site-url';
 
 function getClientIP(request: NextRequest): string {
   return (
@@ -70,13 +69,7 @@ export async function POST(request: NextRequest) {
       },
     );
 
-    let siteUrl: string;
-    try {
-      siteUrl = getSiteUrlOrThrow();
-    } catch (error) {
-      console.error('[signup] Invalid NEXT_PUBLIC_SITE_URL:', error);
-      return NextResponse.json({ error: 'Server configuration error.' }, { status: 500 });
-    }
+    const siteUrl = request.nextUrl.origin;
 
     const { error } = await supabase.auth.signUp({
       email,

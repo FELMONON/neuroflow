@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import type { CookieOptions } from '@supabase/ssr';
-import { getSiteUrlOrThrow } from '@/lib/site-url';
 
 /**
  * Validate the `next` param to prevent open-redirect attacks.
@@ -29,13 +28,7 @@ function sanitizeRedirectPath(raw: string | null, origin: string): string {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
-  let siteUrl: string;
-  try {
-    siteUrl = getSiteUrlOrThrow();
-  } catch (error) {
-    console.error('[auth/callback] Invalid NEXT_PUBLIC_SITE_URL:', error);
-    return NextResponse.json({ error: 'Server configuration error.' }, { status: 500 });
-  }
+  const siteUrl = request.nextUrl.origin;
   const next = sanitizeRedirectPath(searchParams.get('next'), siteUrl);
 
   if (code) {
