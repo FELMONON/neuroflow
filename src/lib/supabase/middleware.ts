@@ -27,6 +27,12 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Skip the middleware entirely for the auth callback route!
+  // Calling supabase.auth.getUser() here before the route handler can corrupt the PKCE code_verifier cookie.
+  if (pathname.startsWith('/auth/callback')) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
   let storedCookies: { name: string; value: string; options: any }[] = [];
 
