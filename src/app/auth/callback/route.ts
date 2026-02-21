@@ -81,8 +81,15 @@ export async function GET(request: NextRequest) {
     }
 
     console.error('[auth/callback] Code exchange failed:', error.message);
+    return NextResponse.redirect(`${siteUrl}/login?error=${encodeURIComponent('auth_failed: ' + error.message)}`);
   }
 
   // Auth code exchange failed — redirect to login with error
-  return NextResponse.redirect(`${siteUrl}/login?error=auth`);
+  const errDesc = searchParams.get('error_description');
+  const errCode = searchParams.get('error');
+  if (errDesc || errCode) {
+    return NextResponse.redirect(`${siteUrl}/login?error=${encodeURIComponent(errDesc || errCode || 'auth')}`);
+  }
+
+  return NextResponse.redirect(`${siteUrl}/login?error=no_code_provided`);
 }

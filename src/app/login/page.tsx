@@ -25,7 +25,7 @@ function getAuthErrorMessage(authError: string | null): string {
     return 'Sign-in expired due to an auth redirect mismatch. Retry from this same URL.';
   }
   if (authError) {
-    return 'Something went sideways. Try again?';
+    return authError; // Debug output instead of generic message
   }
   return '';
 }
