@@ -28,6 +28,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   let supabaseResponse = NextResponse.next({ request });
+  let storedCookies: { name: string; value: string; options: any }[] = [];
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -38,6 +39,7 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
+          storedCookies = cookiesToSet;
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value),
           );
@@ -54,34 +56,35 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  let redirectUrl: URL | null = null;
+
   // /reset-password requires a valid recovery session — allow if user is present
   // (user gets set from the recovery token exchanged at /auth/callback).
   // If no session, redirect to login instead of showing a broken form.
   if (pathname === '/reset-password' && !user) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    return NextResponse.redirect(url);
+    redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = '/login';
+  } else if ((pathname.startsWith('/app') || pathname === '/onboarding') && !user) {
+    // Protect /app/* and /onboarding routes — redirect to login if no session
+    redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = '/login';
+  } else if ((pathname === '/login' || pathname === '/signup') && user) {
+    // Redirect authenticated users away from login/signup (but NOT from /reset-password)
+    redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = '/app/today';
+  } else if (pathname === '/' && user) {
+    // Redirect authenticated users away from landing into app.
+    redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = '/app/today';
   }
 
-  // Protect /app/* and /onboarding routes — redirect to login if no session
-  if ((pathname.startsWith('/app') || pathname === '/onboarding') && !user) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    return NextResponse.redirect(url);
-  }
-
-  // Redirect authenticated users away from login/signup (but NOT from /reset-password)
-  if ((pathname === '/login' || pathname === '/signup') && user) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/app/today';
-    return NextResponse.redirect(url);
-  }
-
-  // Redirect authenticated users away from landing into app.
-  if (pathname === '/' && user) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/app/today';
-    return NextResponse.redirect(url);
+  if (redirectUrl) {
+    const redirectResponse = NextResponse.redirect(redirectUrl);
+    // Apply any cookies that were requested to be set by the Supabase client
+    storedCookies.forEach(({ name, value, options }) =>
+      redirectResponse.cookies.set(name, value, options),
+    );
+    return redirectResponse;
   }
 
   return supabaseResponse;
