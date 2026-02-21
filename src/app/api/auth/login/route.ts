@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient as createSSRServerClient } from '@supabase/ssr';
 import { checkRateLimit, AUTH_RATE_LIMITS } from '@/lib/rate-limit';
 
+export const runtime = 'nodejs';
+
 function getClientIP(request: NextRequest): string {
   return (
     request.headers.get('x-forwarded-for')?.split(',')[0].trim() ??

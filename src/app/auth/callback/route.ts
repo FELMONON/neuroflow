@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import type { CookieOptions } from '@supabase/ssr';
 
+export const runtime = 'nodejs';
+
 /**
  * Validate the `next` param to prevent open-redirect attacks.
  * Only allows relative paths on the same origin.

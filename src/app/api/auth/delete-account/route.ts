@@ -3,6 +3,8 @@ import { createServerClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
 import { checkRateLimit } from '@/lib/rate-limit';
 
+export const runtime = 'nodejs';
+
 const DELETE_CONFIRMATION_TEXT = 'DELETE MY ACCOUNT';
 const RECENT_AUTH_WINDOW_MS = 15 * 60 * 1000;
 
