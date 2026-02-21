@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import { Brain, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -42,8 +42,12 @@ function LoginForm() {
   const [error, setError] = useState('');
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [mode, setMode] = useState<'password' | 'magic-link'>('password');
+  const [authError, setAuthError] = useState<string | null>(null);
 
-  const authError = searchParams.get('error');
+  useEffect(() => {
+    setAuthError(searchParams.get('error'));
+  }, [searchParams]);
+
   const authErrorMessage = getAuthErrorMessage(authError);
 
   const supabase = createClient();
@@ -210,22 +214,20 @@ function LoginForm() {
             <button
               type="button"
               onClick={() => { setMode('magic-link'); setError(''); }}
-              className={`flex-1 text-xs font-medium py-2 rounded-md transition-all duration-200 cursor-pointer ${
-                mode === 'magic-link'
-                  ? 'bg-bg-tertiary text-text-primary shadow-sm'
-                  : 'text-text-muted hover:text-text-secondary'
-              }`}
+              className={`flex-1 text-xs font-medium py-2 rounded-md transition-all duration-200 cursor-pointer ${mode === 'magic-link'
+                ? 'bg-bg-tertiary text-text-primary shadow-sm'
+                : 'text-text-muted hover:text-text-secondary'
+                }`}
             >
               Magic link
             </button>
             <button
               type="button"
               onClick={() => { setMode('password'); setError(''); }}
-              className={`flex-1 text-xs font-medium py-2 rounded-md transition-all duration-200 cursor-pointer ${
-                mode === 'password'
-                  ? 'bg-bg-tertiary text-text-primary shadow-sm'
-                  : 'text-text-muted hover:text-text-secondary'
-              }`}
+              className={`flex-1 text-xs font-medium py-2 rounded-md transition-all duration-200 cursor-pointer ${mode === 'password'
+                ? 'bg-bg-tertiary text-text-primary shadow-sm'
+                : 'text-text-muted hover:text-text-secondary'
+                }`}
             >
               Password
             </button>
