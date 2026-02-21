@@ -125,7 +125,8 @@ function LoginForm() {
   async function handleGoogleLogin() {
     setError('');
     setGoogleLoading(true);
-    const redirectTo = new URL('/auth/callback?next=/app/today', window.location.origin).toString();
+    const origin = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const redirectTo = new URL('/auth/callback?next=/app/today', origin).toString();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo },
