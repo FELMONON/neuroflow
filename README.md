@@ -1,36 +1,140 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NeuroFlow
 
-## Getting Started
+**An external prefrontal cortex for ADHD brains.**
 
-First, run the development server:
+NeuroFlow is an ADHD-specific productivity app that replaces generic task managers with tools designed around how neurodivergent brains actually work — dopamine-aware scheduling, AI-assisted executive function, and built-in accountability structures.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## The Problem
+
+Traditional productivity apps assume a neurotypical brain: one that can prioritize on demand, sustain focus through willpower, and self-regulate dopamine. For people with ADHD, these apps become yet another source of guilt and abandoned systems.
+
+ADHD brains need:
+
+- **External structure** — planning and reflection routines that don't rely on remembering to plan
+- **Dopamine management** — awareness of reward-seeking patterns and healthy alternatives
+- **Reduced activation energy** — AI that breaks overwhelming tasks into startable pieces
+- **Accountability without shame** — body doubling, gamification, and gentle nudges instead of red overdue badges
+
+NeuroFlow builds all of this into a single app.
+
+---
+
+## Features
+
+### Planning & Reflection
+- **Morning Planning** — AI-generated daily plans based on your tasks, energy, and patterns
+- **Evening Reflection** — Guided end-of-day reviews to build self-awareness over time
+
+### Task Management
+- **Smart Task Lists** — Tasks with ADHD-friendly prioritization
+- **AI Task Breakdown** — Overwhelmed by a task? AI splits it into concrete, startable subtasks
+- **Quick Capture** — Global capture modal so fleeting thoughts don't disappear
+- **AI Capture Classification** — Automatically categorize and route captured items
+
+### Focus & Accountability
+- **Focus Sessions** — Timer-based deep work sessions with session history
+- **Body Doubling Rooms** — Virtual co-working spaces for accountability
+- **AI Coaching Nudges** — Context-aware prompts to keep momentum without nagging
+
+### Dopamine & Habits
+- **Dopamine Menu** — A personalized list of healthy dopamine alternatives for when the brain is seeking stimulation
+- **Habit Tracking** — Track routines with streaks and visual progress
+
+### Gamification
+- **Achievements** — Unlock milestones for consistency, not perfection
+
+### Account & Settings
+- **Onboarding Flow** — Guided setup for new users
+- **Auth** — Email/password, magic link, and password recovery
+- **Account Management** — Settings, account deletion, privacy policy, and terms
+
+---
+
+## Tech Stack
+
+| Technology | Why |
+|---|---|
+| **Next.js 16** | App Router with React Server Components for fast initial loads and server-side AI calls |
+| **React 19** | Latest concurrent features and server component support |
+| **Supabase** | Auth, Postgres database, and real-time subscriptions without managing infrastructure |
+| **Zustand** | Lightweight client state — no boilerplate, works naturally with React 19 |
+| **pnpm** | Fast, disk-efficient package management with workspace support |
+| **PLpgSQL** | Database migrations and server-side logic living close to the data |
+| **GitHub Actions** | CI pipeline for automated checks |
+
+---
+
+## Architecture
+
+NeuroFlow uses a **feature-based architecture** where code is organized by domain rather than by technical role:
+
+```
+src/
+├── app/
+│   ├── app/                    # Authenticated app routes
+│   │   ├── tasks/              # Task management
+│   │   ├── focus/              # Focus sessions & timer
+│   │   │   └── [sessionId]/    # Individual session view
+│   │   ├── habits/             # Habit tracking
+│   │   ├── achievements/       # Gamification & milestones
+│   │   ├── dopamine-menu/      # Healthy dopamine alternatives
+│   │   ├── body-double/        # Virtual co-working rooms
+│   │   ├── plan/               # Morning planning
+│   │   ├── reflect/            # Evening reflection
+│   │   └── settings/           # User settings
+│   ├── api/
+│   │   ├── ai/
+│   │   │   ├── morning-plan/       # AI daily plan generation
+│   │   │   ├── evening-reflection/ # AI reflection prompts
+│   │   │   ├── break-down-task/    # AI task decomposition
+│   │   │   ├── classify-capture/   # AI capture classification
+│   │   │   └── coach-nudge/        # AI coaching nudges
+│   │   └── gamification/           # Achievement & XP logic
+│   ├── (auth)/                 # Auth routes (login, signup, etc.)
+│   └── (marketing)/            # Landing, privacy, terms
+├── components/
+│   └── features/
+│       └── capture/            # Quick capture modal
+└── ...
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Each feature owns its routes, components, and API endpoints. Shared UI components and utilities live in `src/components/` and `src/lib/`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Quick Start
 
-## Learn More
+```bash
+# Clone the repository
+git clone https://github.com/FelmonFekadu/neuroflow.git
+cd neuroflow
 
-To learn more about Next.js, take a look at the following resources:
+# Copy environment variables
+cp .env.example .env.local
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Install dependencies
+pnpm install
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Run the development server
+pnpm dev
+```
 
-## Deploy on Vercel
+Open [http://localhost:3000](http://localhost:3000) to see the app.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Environment Setup
+
+NeuroFlow requires a Supabase project for auth and data storage. See **[SUPABASE-SETUP-INSTRUCTIONS.md](./SUPABASE-SETUP-INSTRUCTIONS.md)** for detailed setup steps including:
+
+- Creating a Supabase project
+- Configuring environment variables
+- Running database migrations
+
+---
+
+## License
+
+[MIT](./LICENSE)
