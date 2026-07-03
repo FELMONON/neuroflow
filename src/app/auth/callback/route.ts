@@ -82,15 +82,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${siteUrl}/login?error=pkce`);
     }
 
+    // Log the exact failure server-side, but only expose a generic code to the URL.
     console.error('[auth/callback] Code exchange failed:', error.message);
-    return NextResponse.redirect(`${siteUrl}/login?error=${encodeURIComponent('auth_failed: ' + error.message)}`);
+    return NextResponse.redirect(`${siteUrl}/login?error=auth_failed`);
   }
 
-  // Auth code exchange failed — redirect to login with error
+  // Auth code exchange failed — log details server-side, forward only a
+  // known error code to the login page (never free-text descriptions).
   const errDesc = searchParams.get('error_description');
   const errCode = searchParams.get('error');
   if (errDesc || errCode) {
-    return NextResponse.redirect(`${siteUrl}/login?error=${encodeURIComponent(errDesc || errCode || 'auth')}`);
+    console.error('[auth/callback] Provider error:', errCode, errDesc);
+    const knownCodes = new Set(['access_denied', 'otp_expired']);
+    const safeCode = errCode && knownCodes.has(errCode) ? errCode : 'auth_failed';
+    return NextResponse.redirect(`${siteUrl}/login?error=${safeCode}`);
   }
 
   return NextResponse.redirect(`${siteUrl}/login?error=no_code_provided`);

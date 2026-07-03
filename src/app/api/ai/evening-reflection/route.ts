@@ -1,21 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { getAnthropicClient, parseJsonFromResponse, AI_MODEL } from '@/lib/anthropic';
 import { createServerClient } from '@/lib/supabase/server';
 import { checkRateLimit, AUTH_RATE_LIMITS } from '@/lib/rate-limit';
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-function parseJsonFromResponse(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    const match = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
-    if (match) {
-      return JSON.parse(match[1].trim());
-    }
-    throw new Error('Could not parse JSON from response');
-  }
-}
 
 interface ReflectionResponse {
   summary: string;
@@ -36,6 +23,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Too many requests. Please slow down.' },
         { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) } },
+      );
+    }
+
+    const anthropic = getAnthropicClient();
+    if (!anthropic) {
+      console.error('ANTHROPIC_API_KEY is not configured');
+      return NextResponse.json(
+        { error: 'AI features are not configured on this server.' },
+        { status: 503 },
       );
     }
 
@@ -125,7 +121,7 @@ export async function POST(request: NextRequest) {
     const userMessage = contextParts.join('\n\n');
 
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
+      model: AI_MODEL,
       max_tokens: 1024,
       system: `You are NeuroFlow's evening reflection companion. Generate a warm, encouraging reflection summary. Celebrate wins genuinely. Normalize struggles. Suggest one small thing for tomorrow. Never guilt or shame. Keep it to 3-4 sentences.
 

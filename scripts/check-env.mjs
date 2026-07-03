@@ -19,7 +19,14 @@ function parseEnvFile(filePath) {
     if (idx === -1) continue;
 
     const key = trimmed.slice(0, idx).trim();
-    const value = trimmed.slice(idx + 1).trim();
+    let value = trimmed.slice(idx + 1).trim();
+    // Strip surrounding quotes (vercel env pull writes KEY="value")
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
     if (key && !(key in out)) out[key] = value;
   }
   return out;
@@ -110,6 +117,41 @@ async function main() {
   } catch {
     console.error('Supabase health check failed (network/auth).');
     process.exit(1);
+  }
+
+  // Site URL — required for auth redirects (magic links, password reset, OAuth).
+  const siteUrl = env.NEXT_PUBLIC_SITE_URL;
+  if (!siteUrl) {
+    console.error('Missing NEXT_PUBLIC_SITE_URL (required for auth redirects).');
+    process.exit(1);
+  }
+  try {
+    const parsed = new URL(siteUrl);
+    const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname);
+    if (parsed.protocol !== 'https:' && !isLocalhost) {
+      console.error('NEXT_PUBLIC_SITE_URL must use https (except localhost).');
+      process.exit(1);
+    }
+    if (parsed.pathname !== '/' || parsed.search || parsed.hash) {
+      console.error('NEXT_PUBLIC_SITE_URL must be a bare origin (no path/query/hash).');
+      process.exit(1);
+    }
+  } catch {
+    console.error('NEXT_PUBLIC_SITE_URL is not a valid URL.');
+    process.exit(1);
+  }
+
+  // Anthropic — required for all AI features.
+  if (!env.ANTHROPIC_API_KEY) {
+    console.error('Missing ANTHROPIC_API_KEY (AI routes will return 503).');
+    process.exit(1);
+  }
+
+  // Service role — required for account deletion and shared rate limiting.
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.warn(
+      'Warning: SUPABASE_SERVICE_ROLE_KEY is not set. Account deletion will fail and rate limiting falls back to per-instance memory.',
+    );
   }
 
   console.log('Environment check passed: Supabase URL and keys look valid.');

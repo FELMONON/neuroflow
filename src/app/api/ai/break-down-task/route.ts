@@ -1,21 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { getAnthropicClient, parseJsonFromResponse, AI_MODEL } from '@/lib/anthropic';
 import { createServerClient } from '@/lib/supabase/server';
 import { checkRateLimit, AUTH_RATE_LIMITS } from '@/lib/rate-limit';
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-function parseJsonFromResponse(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    const match = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
-    if (match) {
-      return JSON.parse(match[1].trim());
-    }
-    throw new Error('Could not parse JSON from response');
-  }
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,6 +17,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Too many requests. Please slow down.' },
         { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) } },
+      );
+    }
+
+    const anthropic = getAnthropicClient();
+    if (!anthropic) {
+      console.error('ANTHROPIC_API_KEY is not configured');
+      return NextResponse.json(
+        { error: 'AI features are not configured on this server.' },
+        { status: 503 },
       );
     }
 
@@ -67,7 +63,7 @@ export async function POST(request: NextRequest) {
     const userMessage = `Task: ${safeTitle}${safeDescription ? `\nContext: ${safeDescription}` : ''}`;
 
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
+      model: AI_MODEL,
       max_tokens: 1024,
       system: `You are an ADHD-specialized task coach. Break down the following task into concrete, physical next actions. Each subtask should: 1. Start with a verb (Open, Write, Click, Call, Walk to...) 2. Be completable in under 30 minutes 3. Be specific enough that the person knows EXACTLY what to do without thinking 4. Not require any further breakdown
 

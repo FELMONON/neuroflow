@@ -20,14 +20,19 @@ function validateEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+// Map known error codes to friendly copy. Never render the raw query value —
+// arbitrary ?error= text on the login page is a phishing vector.
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  pkce: 'Sign-in expired due to an auth redirect mismatch. Retry from this same URL.',
+  auth_failed: 'Sign-in didn’t complete. Please try again.',
+  no_code_provided: 'That sign-in link is incomplete. Please request a new one.',
+  access_denied: 'Sign-in was cancelled. You can try again whenever you’re ready.',
+  otp_expired: 'That link has expired. Request a fresh one and you’re back in business.',
+};
+
 function getAuthErrorMessage(authError: string | null): string {
-  if (authError === 'pkce') {
-    return 'Sign-in expired due to an auth redirect mismatch. Retry from this same URL.';
-  }
-  if (authError) {
-    return authError; // Debug output instead of generic message
-  }
-  return '';
+  if (!authError) return '';
+  return AUTH_ERROR_MESSAGES[authError] ?? 'Something went wrong signing you in. Please try again.';
 }
 
 function LoginForm() {

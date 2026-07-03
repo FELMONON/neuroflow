@@ -1,7 +1,7 @@
 # NeuroFlow
 
 **The external prefrontal cortex ADHD brains need.**
-![NeuroFlow — ADHD-focused planner](preview.jpg)
+![NeuroFlow - ADHD-focused planner](preview.jpg)
 
 **[Live demo](https://neuroflow-gamma.vercel.app)**
 
@@ -9,29 +9,35 @@
 
 ## The Problem
 
-Generic productivity apps assume a neurotypical brain: linear task lists, rigid schedules, willpower-based motivation. For the 5-10% of adults with ADHD, these tools don't just fall short — they actively backfire. Missed reminders pile up into shame spirals. Flat task lists offer no sense of where to start. And the dopamine deficit that defines ADHD means "just do it" motivation frameworks are fundamentally broken.
+Generic productivity apps assume a neurotypical brain: linear task lists, rigid schedules, willpower-based motivation. For the 5-10% of adults with ADHD, these tools do not just fall short - they actively backfire. Missed reminders pile up into shame spirals. Flat task lists offer no sense of where to start. And the dopamine deficit that defines ADHD means "just do it" motivation frameworks are fundamentally broken.
 
 NeuroFlow is built around how ADHD brains actually work: variable energy levels, the need for external structure, dopamine-driven motivation, and the power of body doubling.
 
 ## Key Features
 
 ### Morning Planning with Energy Forecasting
+
 Plan your day around *your* energy curve, not a generic 9-to-5. NeuroFlow maps your personal peak and dip windows, then slots high-demand tasks into peak hours and low-effort work into afternoon dips. An AI planner can auto-generate your entire daily schedule from your task list.
 
 ### AI Task Breakdown
-Staring at "do taxes" and freezing? The AI coach breaks overwhelming tasks into concrete, physical next actions — each starting with a verb, each completable in under 30 minutes. "Open browser and navigate to IRS.gov" is something you can actually do. Powered by Claude.
+
+Staring at "do taxes" and freezing? The AI coach breaks overwhelming tasks into concrete, physical next actions - each starting with a verb, each completable in under 30 minutes. "Open browser and navigate to IRS.gov" is something you can actually do. Powered by Claude.
 
 ### Focus Sessions with Parking Lot
-A distraction-aware focus timer with ambient soundscapes (brown noise, rain, lo-fi). When a random thought interrupts your flow, toss it in the Parking Lot — a scratchpad that captures intrusive thoughts without breaking your session. Includes break reminders and hyperfocus alerts when you've overrun a time block.
+
+A distraction-aware focus timer with ambient soundscapes (brown noise, rain, lo-fi). When a random thought interrupts your flow, toss it in the Parking Lot - a scratchpad that captures intrusive thoughts without breaking your session. Includes break reminders and hyperfocus alerts when you have overrun a time block.
 
 ### Dopamine Menu
-A personalized catalog of healthy recharging activities organized by energy level (Wired / Okay / Low / Recharge). Quick Hits for 2-minute resets, Medium Resets for between-task breaks, Pair-with-Tasks for background stimulation, and Earned Rewards for completing hard things. Includes a randomized Quick Pick spinner when you can't decide.
+
+A personalized catalog of healthy recharging activities organized by energy level (Wired / Okay / Low / Recharge). Quick Hits for 2-minute resets, Medium Resets for between-task breaks, Pair-with-Tasks for background stimulation, and Earned Rewards for completing hard things. Includes a randomized Quick Pick spinner when you cannot decide.
 
 ### Body Doubling Rooms
-Virtual co-working spaces where you can see others focusing in real time. Create or join rooms, see who's online, and tap into the accountability that comes from working alongside other people — the ADHD productivity hack that actually works.
+
+Virtual co-working spaces where you can see others focusing in real time. Create or join rooms, see who is online, and tap into the accountability that comes from working alongside other people - the ADHD productivity hack that actually works.
 
 ### Gamification & Achievements
-XP for completing tasks, finishing focus sessions, and checking in. Level progression, streak tracking, and unlockable achievements keep the dopamine loop positive. Focus session XP scales with completion ratio — finishing 80%+ of your planned time earns bonus rewards.
+
+XP for completing tasks, finishing focus sessions, and checking in. Level progression, streak tracking, and unlockable achievements keep the dopamine loop positive. Focus session XP scales with completion ratio - finishing 80%+ of your planned time earns bonus rewards.
 
 ## Tech Stack
 
@@ -54,21 +60,37 @@ cd neuroflow
 pnpm install
 cp .env.example .env.local
 # Fill in your Supabase and Anthropic API keys in .env.local
+pnpm check:env
 pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+## Environment
+
+Required values:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_SITE_URL`
+- `ANTHROPIC_API_KEY`
+
+Recommended production value:
+
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+`pnpm check:env` validates the Supabase project URL, public anon key/project ref, Supabase health endpoint, site URL, and Anthropic key presence. It warns if the service role key is missing because account deletion and shared rate limiting depend on it.
+
 ## Architecture
 
-```
+```text
 src/
 ├── app/                    # Next.js App Router pages
 │   ├── api/ai/             # AI endpoints (task breakdown, morning plan, coach nudge, reflection)
 │   ├── api/auth/           # Auth routes (login, signup, magic link, password reset)
 │   ├── api/gamification/   # Achievement checking
 │   └── app/                # Authenticated app pages
-│       ├── today/          # Dashboard — greeting, energy check-in, focus task, habits
+│       ├── today/          # Dashboard - greeting, energy check-in, focus task, habits
 │       ├── plan/           # Daily planner with energy forecast and time blocks
 │       ├── tasks/          # Task inbox with AI breakdown and filtering
 │       ├── focus/          # Focus timer with soundscapes and parking lot
@@ -86,6 +108,14 @@ src/
 ├── stores/                 # Zustand stores (tasks, sessions, habits, daily plan, profile)
 ├── lib/                    # Utilities (Supabase clients, AI helpers, rate limiting)
 └── types/                  # TypeScript type definitions
+```
+
+## Tests
+
+```bash
+pnpm test
+pnpm lint
+pnpm build
 ```
 
 ## Contributing

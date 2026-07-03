@@ -43,3 +43,10 @@ next-env.d.ts
 
 # RLM chunks
 _rlm_chunks/
+
+# local dev artifacts
+dev.log
+dev.pid
+.codex/
+.claude/
+.env*.local

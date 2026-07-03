@@ -31,3 +31,16 @@ export function getSiteUrlOrThrow(): string {
 
   return parsed.origin;
 }
+
+/**
+ * Best-effort site origin for metadata (robots, sitemap, metadataBase).
+ * Falls back to the production domain so builds never fail on metadata.
+ * Auth flows must use getSiteUrlOrThrow() instead.
+ */
+export const SITE_URL = (() => {
+  try {
+    return getSiteUrlOrThrow();
+  } catch {
+    return 'https://neuroflow.app';
+  }
+})();

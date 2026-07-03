@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { SITE_URL } from "@/lib/site-url";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
   },
   description:
     "Task management, focus tools, and habit tracking designed for how your ADHD brain actually works. Break tasks down, stay focused, build streaks that bend instead of break.",
-  metadataBase: new URL("https://neuroflow.app"),
+  metadataBase: new URL(SITE_URL),
   openGraph: {
     title: "NeuroFlow — Your external prefrontal cortex",
     description:

@@ -1,22 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { getAnthropicClient, parseJsonFromResponse, AI_MODEL } from '@/lib/anthropic';
 import { createServerClient } from '@/lib/supabase/server';
 import { checkRateLimit, AUTH_RATE_LIMITS } from '@/lib/rate-limit';
 import type { Task, TimeBlock } from '@/types/database';
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-function parseJsonFromResponse(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    const match = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
-    if (match) {
-      return JSON.parse(match[1].trim());
-    }
-    throw new Error('Could not parse JSON from response');
-  }
-}
 
 interface MorningPlanResponse {
   greeting: string;
@@ -38,6 +25,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Too many requests. Please slow down.' },
         { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) } },
+      );
+    }
+
+    const anthropic = getAnthropicClient();
+    if (!anthropic) {
+      console.error('ANTHROPIC_API_KEY is not configured');
+      return NextResponse.json(
+        { error: 'AI features are not configured on this server.' },
+        { status: 503 },
       );
     }
 
@@ -70,6 +66,31 @@ export async function POST(request: NextRequest) {
         { error: 'Maximum 50 tasks allowed' },
         { status: 400 }
       );
+    }
+
+    for (const t of tasks) {
+      if (
+        !t ||
+        typeof t !== 'object' ||
+        typeof t.title !== 'string' ||
+        t.title.length === 0 ||
+        t.title.length > 500
+      ) {
+        return NextResponse.json(
+          { error: 'Each task must have a title of 500 characters or less' },
+          { status: 400 }
+        );
+      }
+      if (
+        t.estimated_minutes !== undefined &&
+        t.estimated_minutes !== null &&
+        (typeof t.estimated_minutes !== 'number' || !Number.isFinite(t.estimated_minutes))
+      ) {
+        return NextResponse.json(
+          { error: 'estimated_minutes must be a number' },
+          { status: 400 }
+        );
+      }
     }
 
     if (!energyPattern || typeof energyPattern !== 'object') {
@@ -109,7 +130,7 @@ export async function POST(request: NextRequest) {
     const userMessage = `Tasks for today:\n${taskSummary}\n\nEnergy Pattern:\n- Peak hours: ${energyPattern.peak_start} to ${energyPattern.peak_end}\n- Dip hours: ${energyPattern.dip_start} to ${energyPattern.dip_end}\n${timezone ? `- Timezone: ${timezone}` : ''}`;
 
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
+      model: AI_MODEL,
       max_tokens: 2048,
       system: `You are NeuroFlow's AI morning planner. Given the user's tasks and energy pattern, create an optimized daily plan. Match high-energy tasks to peak hours and low-energy tasks to dip hours. Include breaks and transitions. Be warm and encouraging. Keep your suggestions brief (3-5 sentences intro + the plan).
 
